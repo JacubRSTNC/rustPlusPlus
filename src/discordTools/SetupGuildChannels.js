@@ -26,6 +26,6 @@ async function addTextChannel(name, client, guild, parent, permissionWrite = fal
     channel.setParent(parent.id);
 
     if (permissionWrite) {
-        channel.permissionOverwrites.edit({ SEND_MESSAGES: true });
+        channel.permissionOverwrites.edit(guild.roles.everyone, { SEND_MESSAGES: true });
     }
 }
