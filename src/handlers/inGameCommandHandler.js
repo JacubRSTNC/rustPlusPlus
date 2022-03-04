@@ -4,11 +4,22 @@ const { MessageAttachment } = require('discord.js');
 const DiscordTools = require('../discordTools/discordTools.js');
 const Map = require('../util/map.js');
 
+const AFK_TIME_SECONDS = 5 * 60; /* 5 Minutes */
+
 module.exports = {
-    inGameCommandHandler: async function (rustplus, client, message) {
+    inGameCommandHandler: function (rustplus, client, message) {
         let command = message.broadcast.teamMessage.message.message;
 
-        if (command === `${rustplus.generalSettings.prefix}bradley`) {
+        if (!rustplus.generalSettings.inGameCommandsEnabled) {
+            return false;
+        }
+        else if (command === `${rustplus.generalSettings.prefix}afk`) {
+            module.exports.commandAfk(rustplus);
+        }
+        else if (command === `${rustplus.generalSettings.prefix}alive`) {
+            module.exports.commandAlive(rustplus);
+        }
+        else if (command === `${rustplus.generalSettings.prefix}bradley`) {
             module.exports.commandBradley(rustplus);
         }
         else if (command === `${rustplus.generalSettings.prefix}cargo`) {
@@ -25,6 +36,9 @@ module.exports = {
         }
         else if (command.startsWith(`${rustplus.generalSettings.prefix}marker`)) {
             module.exports.commandMarker(rustplus, client, message);
+        }
+        else if (command === `${rustplus.generalSettings.prefix}mute`) {
+            module.exports.commandMute(rustplus, client);
         }
         else if (command === `${rustplus.generalSettings.prefix}offline`) {
             module.exports.commandOffline(rustplus);
@@ -43,6 +57,9 @@ module.exports = {
         }
         else if (command.startsWith(`${rustplus.generalSettings.prefix}timer `)) {
             module.exports.commandTimer(rustplus, command);
+        }
+        else if (command === `${rustplus.generalSettings.prefix}unmute`) {
+            module.exports.commandUnmute(rustplus, client);
         }
         else if (command === `${rustplus.generalSettings.prefix}wipe`) {
             module.exports.commandWipe(rustplus);
@@ -114,6 +131,82 @@ module.exports = {
         }
 
         return true;
+    },
+
+    commandAfk: function (rustplus) {
+        const date = new Date();
+        let str = '';
+
+        rustplus.getTeamInfo((teamInfo) => {
+            if (!rustplus.isResponseValid(teamInfo)) {
+                return;
+            }
+
+            for (let member of teamInfo.response.teamInfo.members) {
+                if (!rustplus.teamMembers.hasOwnProperty(member.steamId)) {
+                    continue;
+                }
+
+                if (member.isOnline) {
+                    let teamMember = rustplus.teamMembers[member.steamId];
+
+                    let timeDifferenceSeconds = (date - teamMember.time) / 1000;
+                    let afk = Timer.secondsToFullScale(timeDifferenceSeconds, 'dhs');
+
+                    if (timeDifferenceSeconds >= AFK_TIME_SECONDS) {
+                        str += `${member.name} [${afk}], `;
+                    }
+                }
+            }
+
+            if (str !== '') {
+                str = str.slice(0, -2);
+            }
+            else {
+                str = 'No one is AFK.';
+            }
+
+            rustplus.sendTeamMessage(str);
+            rustplus.log('COMMAND', str);
+        });
+    },
+
+    commandAlive: function (rustplus) {
+        const date = new Date();
+
+        rustplus.getTeamInfo((teamInfo) => {
+            if (!rustplus.isResponseValid(teamInfo)) {
+                return;
+            }
+
+            let name = null;
+            let time = null;
+
+            for (let member of teamInfo.response.teamInfo.members) {
+                if (member.isAlive === true) {
+                    let memberAlive = (date - new Date(member.spawnTime * 1000)) / 1000;
+
+                    if (time === null) {
+                        name = member.name;
+                        time = memberAlive;
+                        time = (time < 0) ? 0 : time;
+                    }
+                    else if (memberAlive > time) {
+                        name = member.name;
+                        time = memberAlive;
+                        time = (time < 0) ? 0 : time;
+                    }
+                }
+            }
+
+            if (time !== null) {
+                time = Timer.secondsToFullScale(time);
+                time = (time === '') ? '0s' : time;
+                let str = `${name} has been alive the longest (${time})`;
+                rustplus.sendTeamMessage(str);
+                rustplus.log('COMMAND', str);
+            }
+        });
     },
 
     commandBradley: function (rustplus) {
@@ -407,6 +500,17 @@ module.exports = {
         }
     },
 
+    commandMute: function (rustplus, client) {
+        let str = `In-Game bot messages muted.`;
+        rustplus.sendTeamMessage(str);
+        rustplus.log('COMMAND', str);
+
+        let instance = client.readInstanceFile(rustplus.guildId);
+        rustplus.generalSettings.muteInGameBotMessages = true;
+        instance.generalSettings.muteInGameBotMessages = true;
+        client.writeInstanceFile(rustplus.guildId, instance);
+    },
+
     commandOffline: function (rustplus) {
         rustplus.getTeamInfo((teamInfo) => {
             if (!rustplus.isResponseValid(teamInfo)) {
@@ -619,6 +723,17 @@ module.exports = {
             default:
                 break;
         }
+    },
+
+    commandUnmute: function (rustplus, client) {
+        let instance = client.readInstanceFile(rustplus.guildId);
+        rustplus.generalSettings.muteInGameBotMessages = false;
+        instance.generalSettings.muteInGameBotMessages = false;
+        client.writeInstanceFile(rustplus.guildId, instance);
+
+        let str = `In-Game chat unmuted.`;
+        rustplus.sendTeamMessage(str);
+        rustplus.log('COMMAND', str);
     },
 
     commandWipe: function (rustplus) {

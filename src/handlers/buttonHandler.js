@@ -36,6 +36,28 @@ module.exports = async (client, interaction) => {
 
         await interaction.update({ components: [row] });
     }
+    else if (interaction.customId === 'showTrademark') {
+        instance.generalSettings.showTrademark = !instance.generalSettings.showTrademark;
+
+        if (rustplus) {
+            rustplus.generalSettings.showTrademark = instance.generalSettings.showTrademark;
+        }
+
+        let row = DiscordTools.getTrademarkButtonsRow(instance.generalSettings.showTrademark);
+
+        await interaction.update({ components: [row] });
+    }
+    else if (interaction.customId === 'allowInGameCommands') {
+        instance.generalSettings.inGameCommandsEnabled = !instance.generalSettings.inGameCommandsEnabled;
+
+        if (rustplus) {
+            rustplus.generalSettings.inGameCommandsEnabled = instance.generalSettings.inGameCommandsEnabled;
+        }
+
+        let row = DiscordTools.getInGameCommandsEnabledButtonsRow(instance.generalSettings.inGameCommandsEnabled);
+
+        await interaction.update({ components: [row] });
+    }
     else if (interaction.customId.endsWith('ServerConnect')) {
         let server = interaction.customId.replace('ServerConnect', '');
 
@@ -43,7 +65,13 @@ module.exports = async (client, interaction) => {
             if (value.active) {
                 instance.serverList[key].active = false;
                 let row = DiscordTools.getServerButtonsRow(key, 0, instance.serverList[key].url);
-                client.serverListMessages[guildId][key].edit({ components: [row] });
+
+                let messageId = instance.serverList[key].messageId;
+                let message = await DiscordTools.getMessageById(guildId, instance.channelId.servers, messageId);
+                if (message !== undefined) {
+                    await message.edit({ components: [row] });
+                }
+                break;
             }
         }
 
@@ -89,10 +117,13 @@ module.exports = async (client, interaction) => {
             }
         }
 
-        delete instance.serverList[server];
+        let messageId = instance.serverList[server].messageId;
+        let message = await DiscordTools.getMessageById(guildId, instance.channelId.servers, messageId);
+        if (message !== undefined) {
+            await message.delete();
+        }
 
-        await client.serverListMessages[guildId][server].delete();
-        delete client.serverListMessages[guildId][server];
+        delete instance.serverList[server];
 
         /* Remove all Smart Switches assosiated with this server */
         for (const [key, value] of Object.entries(instance.switches)) {

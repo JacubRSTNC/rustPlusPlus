@@ -33,10 +33,10 @@ module.exports = {
     },
 
     getCategoryById: function (guildId, categoryId) {
-        let guild = module.exports.getGuild(guildId);
+        const guild = module.exports.getGuild(guildId);
 
         if (guild) {
-            let category = guild.channels.cache.get(categoryId);
+            const category = guild.channels.cache.get(categoryId);
 
             if (category && category.type === 'GUILD_CATEGORY') {
                 return category;
@@ -53,6 +53,24 @@ module.exports = {
 
             if (category && category.type === 'GUILD_CATEGORY') {
                 return category;
+            }
+        }
+        return undefined;
+    },
+
+    getMessageById: async function (guildId, channelId, messageId) {
+        const guild = module.exports.getGuild(guildId);
+
+        if (guild) {
+            const channel = guild.channels.cache.get(channelId);
+
+            if (channel) {
+                try {
+                    return await channel.messages.fetch(messageId);
+                }
+                catch (e) {
+                    return undefined;
+                }
             }
         }
         return undefined;
@@ -112,6 +130,24 @@ module.exports = {
                     .setCustomId(`${setting}InGameNotification`)
                     .setLabel('IN-GAME')
                     .setStyle((inGameActive) ? 'SUCCESS' : 'DANGER'))
+    },
+
+    getTrademarkButtonsRow: function (enabled) {
+        return new MessageActionRow()
+            .addComponents(
+                new MessageButton()
+                    .setCustomId('showTrademark')
+                    .setLabel((enabled) ? 'SHOWING' : 'NOT SHOWING')
+                    .setStyle((enabled) ? 'SUCCESS' : 'DANGER'))
+    },
+
+    getInGameCommandsEnabledButtonsRow: function (enabled) {
+        return new MessageActionRow()
+            .addComponents(
+                new MessageButton()
+                    .setCustomId('allowInGameCommands')
+                    .setLabel((enabled) ? 'ENABLED' : 'DISABLED')
+                    .setStyle((enabled) ? 'SUCCESS' : 'DANGER'))
     },
 
     getPrefixSelectMenu: function (currentPrefix) {
