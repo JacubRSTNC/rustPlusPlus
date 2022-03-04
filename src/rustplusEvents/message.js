@@ -19,7 +19,7 @@ module.exports = {
             }
             else if (message.broadcast.hasOwnProperty('teamMessage')) {
                 /* Let command handler handle the potential command */
-                let handled = await CommandHandler.inGameCommandHandler(rustplus, client, message);
+                let handled = CommandHandler.inGameCommandHandler(rustplus, client, message);
                 if (!handled) {
                     TeamChatHandler(rustplus, client, message.broadcast.teamMessage.message);
                 }
