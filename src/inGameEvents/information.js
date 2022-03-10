@@ -227,6 +227,24 @@ module.exports = {
             }
         }
 
+        /* Chinook */
+        let chinook = '';
+        for (const [id, content] of Object.entries(rustplus.activeChinook47s)) {
+            chinook = `At ${content.location}.`
+            break;
+        }
+
+        if (chinook === '') {
+            if (rustplus.timeSinceChinookWasOut === null) {
+                chinook = 'Not active.';
+            }
+            else {
+                let secondsSince = (new Date() - rustplus.timeSinceChinookWasOut) / 1000;
+                let timeSince = Timer.secondsToFullScale(secondsSince, 's');
+                chinook = `${timeSince} since last.`;
+            }
+        }
+
         let file = new MessageAttachment(`src/images/${EVENT_IMG}`)
         let embed = new MessageEmbed()
             .setTitle('Event Information')
@@ -238,7 +256,8 @@ module.exports = {
                 { name: 'Patrol Helicopter', value: patrolHelicopter, inline: true },
                 { name: 'Bradley APC', value: bradley, inline: true },
                 { name: 'Small Oil Rig', value: smallOil, inline: true },
-                { name: 'Large Oil Rig', value: largeOil, inline: true })
+                { name: 'Large Oil Rig', value: largeOil, inline: true },
+                { name: 'Chinook 47', value: chinook, inline: true })
             .setFooter({
                 text: instance.serverList[`${rustplus.server}-${rustplus.port}`].title
             });
@@ -251,7 +270,8 @@ module.exports = {
     updateTeamInformation: async function (rustplus, client, info, mapMarkers, teamInfo, time, instance, message) {
         const teamLeaderId = teamInfo.response.teamInfo.leaderSteamId.toNumber();
 
-        const mapSize = info.response.info.mapSize;
+        let mapSize = Map.getCorrectedMapSize(info.response.info.mapSize);
+
         const teamSize = teamInfo.response.teamInfo.members.length;
 
         let names = '';
@@ -269,9 +289,7 @@ module.exports = {
 
             unhandled = unhandled.filter(e => parseInt(e) !== member.steamId.toNumber());
 
-            let outsidePos = Map.getPointDirection(member.x, member.y, mapSize);
-            let gridPos = Map.getGridPos(member.x, member.y, mapSize);
-            let pos = (gridPos === null) ? outsidePos : gridPos;
+            let pos = Map.getPos(member.x, member.y, mapSize);
 
             if (teamSize < 12) {
                 names += `[${member.name}](${STEAM_LINK}${member.steamId})`;

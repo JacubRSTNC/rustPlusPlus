@@ -4,6 +4,7 @@ const RustPlusTypes = require('../util/rustplusTypes.js');
 const Timer = require('../util/timer');
 
 const PATROL_HELI_DOWNED_RADIUS = 400;
+const LAUNCH_SITE_RADIUS = 250;
 
 module.exports = {
     checkEvent: function (rustplus, client, info, mapMarkers, teamInfo, time) {
@@ -17,10 +18,8 @@ module.exports = {
     checkNewExplosionDetected: function (rustplus, mapMarkers, info) {
         for (let marker of mapMarkers.response.mapMarkers.markers) {
             if (marker.type === RustPlusTypes.MarkerType.Explosion) {
-                let mapSize = info.response.info.mapSize;
-                let outsidePos = Map.getPointDirection(marker.x, marker.y, mapSize);
-                let gridPos = Map.getGridPos(marker.x, marker.y, mapSize);
-                let pos = (gridPos === null) ? outsidePos : gridPos;
+                let mapSize = Map.getCorrectedMapSize(info.response.info.mapSize);
+                let pos = Map.getPos(marker.x, marker.y, mapSize);
 
                 if (!(marker.id in rustplus.activeExplosions)) {
                     /* New Explosion detected, save it */
@@ -56,9 +55,12 @@ module.exports = {
                     }
                     else {
                         /* Bradley APC just got destroyed */
+                        let atLaunch = module.exports.isBradleyExplosionAtLaunchSite(marker.x, marker.y, rustplus);
+                        pos = (atLaunch) ? 'Launch Site' : pos;
+
                         rustplus.sendEvent(
                             rustplus.notificationSettings.bradleyApcDestroyed,
-                            'Bradley APC was destroyed at Launch Site.');
+                            `Bradley APC was destroyed at ${pos}.`);
 
                         if (!rustplus.firstPoll) {
                             rustplus.bradleyRespawnTimers[marker.id] = new Timer.timer(
@@ -117,5 +119,15 @@ module.exports = {
             args[0].bradleyRespawnTimers[parseInt(args[1])].stop();
             delete args[0].bradleyRespawnTimers[parseInt(args[1])];
         }
-    }
+    },
+
+    isBradleyExplosionAtLaunchSite: function (x, y, rustplus) {
+        /* Check where the explosion marker is located, if near Launch Site, return true */
+        for (let monument of rustplus.mapMonuments) {
+            if (monument.token === 'launchsite') {
+                return (Map.getDistance(x, y, monument.x, monument.y) <= LAUNCH_SITE_RADIUS);
+            }
+        }
+        return false;
+    },
 }
