@@ -7,7 +7,7 @@ const PATROL_HELI_DOWNED_RADIUS = 400;
 const LAUNCH_SITE_RADIUS = 250;
 
 module.exports = {
-    checkEvent: function (rustplus, client, info, mapMarkers, teamInfo, time) {
+    handler: function (rustplus, client, info, mapMarkers, teamInfo, time) {
         /* Check if new explosion is detected */
         module.exports.checkNewExplosionDetected(rustplus, mapMarkers, info);
 
@@ -58,9 +58,16 @@ module.exports = {
                         let atLaunch = module.exports.isBradleyExplosionAtLaunchSite(marker.x, marker.y, rustplus);
                         pos = (atLaunch) ? 'Launch Site' : pos;
 
-                        rustplus.sendEvent(
-                            rustplus.notificationSettings.bradleyApcDestroyed,
-                            `Bradley APC was destroyed at ${pos}.`);
+                        if (rustplus.firstPoll) {
+                            rustplus.sendEvent(
+                                rustplus.notificationSettings.bradleyApcDestroyed,
+                                `Bradley APC or Patrol Helicopter was destroyed at ${pos}.`);
+                        }
+                        else {
+                            rustplus.sendEvent(
+                                rustplus.notificationSettings.bradleyApcDestroyed,
+                                `Bradley APC was destroyed at ${pos}.`);
+                        }
 
                         if (!rustplus.firstPoll) {
                             rustplus.bradleyRespawnTimers[marker.id] = new Timer.timer(
