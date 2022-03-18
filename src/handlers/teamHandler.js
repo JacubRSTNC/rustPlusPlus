@@ -128,6 +128,23 @@ module.exports = {
                             ]
                         });
                     }
+
+                    if (player.isOnline() && playerUpdated.isOnline() && player.getAfkSeconds() > 60) {
+                        await channel.send({
+                            embeds: [new MessageEmbed()
+                                .setColor('#ff0040')
+                                .setAuthor({
+                                    name: `${player.name} just got killed whilst AFK.`,
+                                    iconURL: (png !== '') ? png : DEFAULT_IMG,
+                                    url: `${STEAM_LINK}${player.steamId}`
+                                })
+                                .setTimestamp()
+                                .setFooter({
+                                    text: instance.serverList[`${rustplus.server}-${rustplus.port}`].title
+                                })
+                            ]
+                        });
+                    }
                     break;
                 }
             }
