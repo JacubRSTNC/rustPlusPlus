@@ -132,15 +132,16 @@ module.exports = {
                                 })
                             ]
                         });
-                        rustplus.sendTeamMessage(`${player.name} just got offline killed.`);
+                        rustplus.sendTeamMessage(`${player.name} just got offline killed at ${pos}.`);
                     }
                     if (player.isOnline && playerUpdated.isOnline && player.getAfkSeconds() > 60 && player.isGoneDead(playerUpdated)) {
                         let png = await Scrape.scrapeSteamProfilePicture(rustplus, player.steamId);
+                        let pos = player.pos;
                         await channel.send({
                             embeds: [new MessageEmbed()
                                 .setColor('#ff0040')
                                 .setAuthor({
-                                    name: `${player.name} just got killed whilst AFK.`,
+                                    name: `${player.name} just got killed whilst AFK at ${pos}.`,
                                     iconURL: (png !== '') ? png : DEFAULT_IMG,
                                     url: `${STEAM_LINK}${player.steamId}`
                                 })
@@ -150,7 +151,7 @@ module.exports = {
                                 })
                             ]
                         });
-                        rustplus.sendTeamMessage(`${player.name} just got killed whilst AFK.`);
+                        rustplus.sendTeamMessage(`${player.name} just got killed whilst AFK at ${pos}.`);
                     }
                     break;
                 }
