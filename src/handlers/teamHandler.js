@@ -128,7 +128,7 @@ module.exports = {
                             ]
                         });
                     }
-
+                    console.log(`[debug] ${player.name}:${player.getAfkSeconds()}`)
                     if (player.isOnline && playerUpdated.isOnline && player.getAfkSeconds() > 60) {
                         await channel.send({
                             embeds: [new MessageEmbed()
