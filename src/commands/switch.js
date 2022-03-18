@@ -35,6 +35,7 @@ module.exports = {
 						.addChoice('Elevator', 'elevator')
 						.addChoice('HBHF Sensor', 'hbhf_sensor')
 						.addChoice('Heater', 'heater')
+						.addChoice('SAM site', 'samsite')
 						.addChoice('Siren Light', 'siren_light')
 						.addChoice('Smart Alarm', 'smart_alarm')
 						.addChoice('Smart Switch', 'smart_switch')
