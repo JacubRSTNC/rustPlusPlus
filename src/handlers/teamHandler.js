@@ -44,6 +44,7 @@ module.exports = {
                     })
                 ]
             });
+            rustplus.sendTeamMessage(`${player.name} left the team.`);
         }
 
         for (let steamId of newPlayers) {
@@ -64,6 +65,7 @@ module.exports = {
                             })
                         ]
                     });
+                    rustplus.sendTeamMessage(`${player.name} joined the team.`);
                 }
             }
         }
@@ -91,6 +93,7 @@ module.exports = {
                                 })
                             ]
                         });
+                        rustplus.sendTeamMessage(`${player.name} just connected.`);
                     }
 
                     if (player.isGoneOffline(playerUpdated)) {
@@ -109,6 +112,7 @@ module.exports = {
                                 })
                             ]
                         });
+                        rustplus.sendTeamMessage(`${player.name} just disconnected.`);
                     }
 
                     if (!player.isOnline && !playerUpdated.isOnline && player.isGoneDead(playerUpdated)) {
@@ -127,6 +131,7 @@ module.exports = {
                                 })
                             ]
                         });
+                        rustplus.sendTeamMessage(`${player.name} just got offline killed.`);
                     }
                     if (player.isOnline && playerUpdated.isOnline && player.getAfkSeconds() > 60 && player.isGoneDead(playerUpdated)) {
                         let png = await Scrape.scrapeSteamProfilePicture(rustplus, player.steamId);
@@ -144,6 +149,7 @@ module.exports = {
                                 })
                             ]
                         });
+                        rustplus.sendTeamMessage(`${player.name} just got killed whilst AFK.`);
                     }
                     break;
                 }
