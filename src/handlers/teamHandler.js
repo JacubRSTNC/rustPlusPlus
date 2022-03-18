@@ -129,7 +129,8 @@ module.exports = {
                         });
                     }
                     console.log(`[debug] ${player.name}:${player.getAfkSeconds()}`)
-                    if (player.isOnline && playerUpdated.isOnline && player.getAfkSeconds() > 60) {
+                    if (player.isOnline && playerUpdated.isOnline && player.getAfkSeconds() > 60 && player.isGoneDead(playerUpdated)) {
+                        let png = await Scrape.scrapeSteamProfilePicture(rustplus, player.steamId);
                         await channel.send({
                             embeds: [new MessageEmbed()
                                 .setColor('#ff0040')
