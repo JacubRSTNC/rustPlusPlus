@@ -129,7 +129,7 @@ module.exports = {
                         });
                     }
 
-                    if (player.isOnline() && playerUpdated.isOnline() && player.getAfkSeconds() > 60) {
+                    if (player.isOnline && playerUpdated.isOnline && player.getAfkSeconds() > 60) {
                         await channel.send({
                             embeds: [new MessageEmbed()
                                 .setColor('#ff0040')
