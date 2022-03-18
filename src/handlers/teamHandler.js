@@ -134,7 +134,7 @@ module.exports = {
                         });
                         rustplus.sendTeamMessage(`${player.name} just got offline killed at ${pos}.`);
                     }
-                    if (player.isOnline && playerUpdated.isOnline && player.getAfkSeconds() > 60 && player.isGoneDead(playerUpdated)) {
+                    if (player.isOnline && playerUpdated.isOnline && player.getAfkSeconds() >= 300 && player.isGoneDead(playerUpdated)) {
                         let png = await Scrape.scrapeSteamProfilePicture(rustplus, player.steamId);
                         let pos = player.pos;
                         await channel.send({
