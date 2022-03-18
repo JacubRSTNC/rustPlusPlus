@@ -32,7 +32,7 @@ module.exports = {
             let png = await Scrape.scrapeSteamProfilePicture(rustplus, steamId);
             await channel.send({
                 embeds: [new MessageEmbed()
-                    .setColor('#ff0040')
+                    .setColor('#606060')
                     .setAuthor({
                         name: `${player.name} left the team.`,
                         iconURL: (png !== '') ? png : DEFAULT_IMG,
@@ -116,12 +116,13 @@ module.exports = {
                     }
 
                     if (!player.isOnline && !playerUpdated.isOnline && player.isGoneDead(playerUpdated)) {
+                        let pos = player.pos;
                         let png = await Scrape.scrapeSteamProfilePicture(rustplus, player.steamId);
                         await channel.send({
                             embeds: [new MessageEmbed()
                                 .setColor('#ff0040')
                                 .setAuthor({
-                                    name: `${player.name} just got offline killed.`,
+                                    name: `${player.name} just got offline killed at ${pos}.`,
                                     iconURL: (png !== '') ? png : DEFAULT_IMG,
                                     url: `${STEAM_LINK}${player.steamId}`
                                 })
