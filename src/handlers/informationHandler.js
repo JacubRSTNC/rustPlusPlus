@@ -57,20 +57,20 @@ module.exports = {
     },
 
     updateServerInformation: async function (rustplus, client, info, mapMarkers, teamInfo, time, instance, message) {
-        const serverName = info.response.info.name;
-        const sinceWipe = (new Date() - new Date(info.response.info.wipeTime * 1000)) / 1000;
+        const serverName = rustplus.info.name;
+        const sinceWipe = rustplus.info.getSecondsSinceWipe();
         const wipeDay = `Day ${Math.ceil(sinceWipe / (60 * 60 * 24))}`;
 
-        const serverTime = `${Timer.convertDecimalToHoursMinutes(time.response.time.time)}`;
-        const timeLeft = Timer.getTimeBeforeSunriseOrSunset(rustplus, client, time, 's');
-        const timeLeftTitle = getTimeLeftTillDayOrNightTitle(time);
+        const serverTime = `${Timer.convertDecimalToHoursMinutes(rustplus.time.time)}`;
+        const timeLeft = rustplus.time.getTimeTillDayOrNight('s');
+        const timeLeftTitle = 'Time till ' + ((rustplus.time.isDay()) ? `${NIGHT}` : `${DAY}`);
 
         const pop = getPopString(info);
 
-        const map = `${info.response.info.map}`;
-        const mapSize = `${info.response.info.mapSize}`;
-        const mapSeed = `${info.response.info.seed}`;
-        const mapSalt = `${info.response.info.salt}`;
+        const map = `${rustplus.info.map}`;
+        const mapSize = `${rustplus.info.mapSize}`;
+        const mapSeed = `${rustplus.info.seed}`;
+        const mapSalt = `${rustplus.info.salt}`;
 
         let file = new MessageAttachment(`src/images/${SERVER_IMG}`)
         let embed = new MessageEmbed()
@@ -354,14 +354,6 @@ async function sendInformationEmbed(rustplus, client, instance, embed, file, mes
         await message.edit({ embeds: [embed] });
     }
 
-}
-
-function getTimeLeftTillDayOrNightTitle(time) {
-    const rawTime = parseFloat(time.response.time.time.toFixed(2));
-    const sunrise = parseFloat(time.response.time.sunrise.toFixed(2));
-    const sunset = parseFloat(time.response.time.sunset.toFixed(2));
-
-    return (rawTime >= sunrise && rawTime < sunset) ? `Time till ${NIGHT}` : `Time till ${DAY}`;
 }
 
 function getPopString(info) {

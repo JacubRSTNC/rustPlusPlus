@@ -59,7 +59,7 @@ module.exports = {
             module.exports.commandSmall(rustplus);
         }
         else if (command === `${rustplus.generalSettings.prefix}time`) {
-            module.exports.commandTime(rustplus, client);
+            module.exports.commandTime(rustplus);
         }
         else if (command.startsWith(`${rustplus.generalSettings.prefix}timer `)) {
             module.exports.commandTimer(rustplus, command);
@@ -106,16 +106,17 @@ module.exports = {
                     client.writeInstanceFile(rustplus.guildId, instance);
 
                     let file = new MessageAttachment(`src/images/electrics/${content.image}`);
-                    let embed = DiscordTools.getSwitchButtonsEmbed(id, content, prefix);
+                    let embed = DiscordTools.getSwitchEmbed(id, content, prefix);
 
-                    let row = DiscordTools.getSwitchButtonsRow(id, active);
+                    let selectMenu = DiscordTools.getSwitchSelectMenu(id, content);
+                    let buttonRow = DiscordTools.getSwitchButtonsRow(id, content);
 
                     rustplus.interactionSwitches[id] = active;
 
                     if (active) {
                         rustplus.turnSmartSwitchOn(id, async (msg) => {
                             await client.switchesMessages[rustplus.guildId][id].edit({
-                                embeds: [embed], components: [row], files: [file]
+                                embeds: [embed], components: [selectMenu, buttonRow], files: [file]
                             });
                             rustplus.sendTeamMessage(`${instance.switches[id].name} was turned on.`);
                         });
@@ -123,7 +124,7 @@ module.exports = {
                     else {
                         rustplus.turnSmartSwitchOff(id, async (msg) => {
                             await client.switchesMessages[rustplus.guildId][id].edit({
-                                embeds: [embed], components: [row], files: [file]
+                                embeds: [embed], components: [selectMenu, buttonRow], files: [file]
                             });
                             rustplus.sendTeamMessage(`${instance.switches[id].name} was turned off.`);
                         });
@@ -517,23 +518,11 @@ module.exports = {
     },
 
     commandPop: function (rustplus) {
-        rustplus.getInfo((msg) => {
-            if (!rustplus.isResponseValid(msg)) {
-                return;
-            }
-
-            const now = msg.response.info.players;
-            const max = msg.response.info.maxPlayers;
-            const queue = msg.response.info.queuedPlayers;
-
-            let str = `Population: (${now}/${max}) players`;
-
-            if (queue !== 0) {
-                str += ` and ${queue} players in queue.`;
-            }
-
-            rustplus.printCommandOutput(rustplus, str);
-        });
+        let str = `Population: (${rustplus.info.players}/${rustplus.info.maxPlayers}) players`;
+        if (rustplus.info.queuedPlayers !== 0) {
+            str += ` and ${rustplus.info.queuedPlayers} players in queue.`;
+        }
+        rustplus.printCommandOutput(rustplus, str);
     },
 
     commandSmall: function (rustplus) {
@@ -566,32 +555,21 @@ module.exports = {
         }
     },
 
-    commandTime: function (rustplus, client) {
-        rustplus.getTime((msg) => {
-            if (!rustplus.isResponseValid(msg)) {
-                return;
+    commandTime: function (rustplus) {
+        let time = Timer.convertDecimalToHoursMinutes(rustplus.time.time);
+        let str = `In-Game time: ${time}.`;
+        let timeLeft = rustplus.time.getTimeTillDayOrNight();
+
+        if (timeLeft !== null) {
+            if (rustplus.time.isDay()) {
+                str += ` Approximately ${timeLeft} before nightfall.`;
             }
-
-            const rawTime = parseFloat(msg.response.time.time.toFixed(2));
-            const sunrise = parseFloat(msg.response.time.sunrise.toFixed(2));
-            const sunset = parseFloat(msg.response.time.sunset.toFixed(2));
-            const time = Timer.convertDecimalToHoursMinutes(msg.response.time.time);
-            let str = `In-Game time: ${time}.`;
-
-            let timeLeft = Timer.getTimeBeforeSunriseOrSunset(rustplus, client, msg);
-            if (timeLeft !== null) {
-                if (rawTime >= sunrise && rawTime < sunset) {
-                    /* It's Day */
-                    str += ` Approximately ${timeLeft} before nightfall.`;
-                }
-                else {
-                    /* It's Night */
-                    str += ` Approximately ${timeLeft} before daybreak.`;
-                }
+            else {
+                str += ` Approximately ${timeLeft} before daybreak.`;
             }
+        }
 
-            rustplus.printCommandOutput(rustplus, str);
-        });
+        rustplus.printCommandOutput(rustplus, str);
     },
 
     commandTimer: function (rustplus, command) {
@@ -686,27 +664,7 @@ module.exports = {
     },
 
     commandWipe: function (rustplus) {
-        rustplus.getInfo((msg) => {
-            if (!rustplus.isResponseValid(msg)) {
-                return;
-            }
-
-            const wipe = new Date(msg.response.info.wipeTime * 1000);
-            const now = new Date();
-
-            const sinceWipe = Timer.secondsToFullScale((now - wipe) / 1000);
-
-            let str = `${sinceWipe} since wipe.`;
-
-            rustplus.printCommandOutput(rustplus, str);
-        });
+        let str = `${rustplus.info.getTimeSinceWipe()} since wipe.`;
+        rustplus.printCommandOutput(rustplus, str);
     },
 };
-
-function promoteToLeader(rustplus, steamId) {
-    return rustplus.sendRequestAsync({
-        promoteToLeader: {
-            steamId: steamId
-        },
-    }, 2000);
-}
