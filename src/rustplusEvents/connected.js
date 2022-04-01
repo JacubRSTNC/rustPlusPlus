@@ -65,6 +65,8 @@ module.exports = {
                             text: instance.serverList[server].title
                         })
                     ],
+                    content: "@everyone",
+                    allowedMentions: {parse: ["everyone"]},
                     files: [file]
                 });
             }
