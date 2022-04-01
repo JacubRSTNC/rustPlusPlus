@@ -1,5 +1,4 @@
 const DiscordTools = require('../discordTools/discordTools.js');
-const { MessageAttachment } = require('discord.js');
 
 module.exports = async (client, interaction) => {
     let guildId = interaction.guildId;
@@ -14,12 +13,14 @@ module.exports = async (client, interaction) => {
             rustplus.notificationSettings[setting].discord = instance.notificationSettings[setting].discord;
         }
 
-        let row = DiscordTools.getNotificationButtonsRow(
+        let row = DiscordTools.getNotificationButtons(
             setting,
             instance.notificationSettings[setting].discord,
             instance.notificationSettings[setting].inGame);
 
         await interaction.update({ components: [row] });
+
+        client.writeInstanceFile(guildId, instance);
     }
     else if (interaction.customId.endsWith('InGameNotification')) {
         let setting = interaction.customId.replace('InGameNotification', '');
@@ -29,12 +30,14 @@ module.exports = async (client, interaction) => {
             rustplus.notificationSettings[setting].inGame = instance.notificationSettings[setting].inGame;
         }
 
-        let row = DiscordTools.getNotificationButtonsRow(
+        let row = DiscordTools.getNotificationButtons(
             setting,
             instance.notificationSettings[setting].discord,
             instance.notificationSettings[setting].inGame);
 
         await interaction.update({ components: [row] });
+
+        client.writeInstanceFile(guildId, instance);
     }
     else if (interaction.customId === 'showTrademark') {
         instance.generalSettings.showTrademark = !instance.generalSettings.showTrademark;
@@ -43,9 +46,11 @@ module.exports = async (client, interaction) => {
             rustplus.generalSettings.showTrademark = instance.generalSettings.showTrademark;
         }
 
-        let row = DiscordTools.getTrademarkButtonsRow(instance.generalSettings.showTrademark);
+        let row = DiscordTools.getTrademarkButton(instance.generalSettings.showTrademark);
 
         await interaction.update({ components: [row] });
+
+        client.writeInstanceFile(guildId, instance);
     }
     else if (interaction.customId === 'allowInGameCommands') {
         instance.generalSettings.inGameCommandsEnabled = !instance.generalSettings.inGameCommandsEnabled;
@@ -54,9 +59,11 @@ module.exports = async (client, interaction) => {
             rustplus.generalSettings.inGameCommandsEnabled = instance.generalSettings.inGameCommandsEnabled;
         }
 
-        let row = DiscordTools.getInGameCommandsEnabledButtonsRow(instance.generalSettings.inGameCommandsEnabled);
+        let row = DiscordTools.getInGameCommandsEnabledButton(instance.generalSettings.inGameCommandsEnabled);
 
         await interaction.update({ components: [row] });
+
+        client.writeInstanceFile(guildId, instance);
     }
     else if (interaction.customId.endsWith('ServerConnect')) {
         let server = interaction.customId.replace('ServerConnect', '');
@@ -64,20 +71,17 @@ module.exports = async (client, interaction) => {
         for (const [key, value] of Object.entries(instance.serverList)) {
             if (value.active) {
                 instance.serverList[key].active = false;
-                let row = DiscordTools.getServerButtonsRow(key, 0, instance.serverList[key].url);
-
-                let messageId = instance.serverList[key].messageId;
-                let message = await DiscordTools.getMessageById(guildId, instance.channelId.servers, messageId);
-                if (message !== undefined) {
-                    await message.edit({ components: [row] });
-                }
+                client.writeInstanceFile(guildId, instance);
+                await DiscordTools.sendServerMessage(guildId, key, null, false, true);
                 break;
             }
         }
 
+        instance = client.readInstanceFile(guildId);
         instance.serverList[server].active = true;
-        let row = DiscordTools.getServerButtonsRow(server, 1, instance.serverList[server].url);
-        await interaction.update({ components: [row] });
+        client.writeInstanceFile(guildId, instance);
+
+        await DiscordTools.sendServerMessage(guildId, server, null, false, true, interaction);
 
         /* Disconnect previous instance is any */
         if (rustplus) {
@@ -92,6 +96,7 @@ module.exports = async (client, interaction) => {
             instance.serverList[server].steamId,
             instance.serverList[server].playerToken
         );
+
     }
     else if (interaction.customId.endsWith('ServerDisconnect') ||
         interaction.customId.endsWith('ServerReconnecting')) {
@@ -99,8 +104,9 @@ module.exports = async (client, interaction) => {
         server = server.replace('ServerReconnecting', '');
 
         instance.serverList[server].active = false;
-        let row = DiscordTools.getServerButtonsRow(server, 0, instance.serverList[server].url);
-        await interaction.update({ components: [row] });
+        client.writeInstanceFile(guildId, instance);
+
+        await DiscordTools.sendServerMessage(guildId, server, null, false, true, interaction);
 
         /* Disconnect previous instance if any */
         if (rustplus) {
@@ -133,6 +139,8 @@ module.exports = async (client, interaction) => {
                 delete instance.switches[key];
             }
         }
+
+        client.writeInstanceFile(guildId, instance);
     }
     else if (interaction.customId.endsWith('SmartSwitch')) {
         let id = interaction.customId.replace('OnSmartSwitch', '').replace('OffSmartSwitch', '');
@@ -144,30 +152,13 @@ module.exports = async (client, interaction) => {
         }
 
         let active = (interaction.customId.endsWith('OnSmartSwitch')) ? true : false;
-        let prefix = rustplus.generalSettings.prefix;
-
         instance.switches[id].active = active;
+        client.writeInstanceFile(guildId, instance);
 
-        let sw = instance.switches[id];
-
-        let file = new MessageAttachment(`src/images/electrics/${sw.image}`);
-        let embed = DiscordTools.getSwitchEmbed(id, sw, prefix);
-
-        let selectMenu = DiscordTools.getSwitchSelectMenu(id, sw);
-        let buttonRow = DiscordTools.getSwitchButtonsRow(id, sw);
+        rustplus.turnSmartSwitchAsync(id, active);
+        DiscordTools.sendSmartSwitchMessage(guildId, id, true, true, false, interaction);
 
         rustplus.interactionSwitches[id] = active;
-
-        if (active) {
-            client.rustplusInstances[interaction.guildId].turnSmartSwitchOn(id, async (msg) => {
-                await interaction.update({ embeds: [embed], components: [selectMenu, buttonRow], files: [file] });
-            });
-        }
-        else {
-            client.rustplusInstances[interaction.guildId].turnSmartSwitchOff(id, async (msg) => {
-                await interaction.update({ embeds: [embed], components: [selectMenu, buttonRow], files: [file] });
-            });
-        }
     }
     else if (interaction.customId.endsWith('SmartSwitchDelete')) {
         let id = interaction.customId.replace('SmartSwitchDelete', '');
@@ -176,7 +167,7 @@ module.exports = async (client, interaction) => {
 
         await client.switchesMessages[guildId][id].delete();
         delete client.switchesMessages[guildId][id];
-    }
 
-    client.writeInstanceFile(guildId, instance);
+        client.writeInstanceFile(guildId, instance);
+    }
 }

@@ -15,7 +15,7 @@ module.exports = {
 		await interaction.deferReply({ ephemeral: true });
 
 		switch (interaction.options.getSubcommand()) {
-			case 'discord':
+			case 'discord': {
 				const guild = DiscordTools.getGuild(interaction.guildId);
 
 				instance.firstTime = true;
@@ -27,16 +27,23 @@ module.exports = {
 				await require('../discordTools/SetupServerList')(client, guild);
 				await require('../discordTools/SetupSettingsMenu')(client, guild);
 
-				DiscordTools.clearTextChannel(guild.id, instance.channelId.information, 100);
+				instance = client.readInstanceFile(interaction.guildId);
+				instance.informationMessageId.server = null;
+				instance.informationMessageId.event = null;
+				instance.informationMessageId.team = null;
+				client.writeInstanceFile(interaction.guildId, instance);
+
+				await DiscordTools.clearTextChannel(guild.id, instance.channelId.information, 100);
 
 				await interaction.editReply({
 					content: ':white_check_mark: Discord Reset.',
 					ephemeral: true
 				});
-				break;
+				client.log('INFO', 'Discord Reset.');
+			} break;
 
-			default:
-				break;
+			default: {
+			} break;
 		}
 	},
 };

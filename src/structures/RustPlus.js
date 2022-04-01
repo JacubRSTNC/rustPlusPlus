@@ -5,22 +5,36 @@ const { MessageEmbed, MessageAttachment } = require('discord.js');
 const Logger = require('./Logger.js');
 const path = require('path');
 const DiscordTools = require('../discordTools/discordTools.js');
-
-const MAX_LENGTH_TEAM_MESSAGE = 128;
+const Constants = require('../util/constants.js');
 
 class RustPlus extends RP {
     constructor(guildId, serverIp, appPort, steamId, playerToken) {
         super(serverIp, appPort, steamId, playerToken);
 
         this.guildId = guildId;
+        this.intervalId = 0;
+        this.logger = null;
+        this.firstPoll = true;
+        this.generalSettings = null;
+        this.notificationSettings = null;
+        this.deleted = false;
+        this.connected = false;
+        this.isReconnect = false;
+        this.refusedConnectionRetry = false;
+        this.firstTime = true;
+
+        this.map = null;
+        this.info = null;
+        this.time = null;
+        this.team = null;
 
         this.trademarkString = 'rustPlusPlus | ';
         this.messageIgnoreCounter = 0;
 
-        this.oldsendTeamMessage = this.sendTeamMessage;
-        this.sendTeamMessage = function (message, ignoreForward = false) {
+        this.oldsendTeamMessageAsync = this.sendTeamMessageAsync;
+        this.sendTeamMessageAsync = async function (message, ignoreForward = false) {
             let trademark = (this.generalSettings.showTrademark) ? this.trademarkString : '';
-            let messageMaxLength = MAX_LENGTH_TEAM_MESSAGE - trademark.length;
+            let messageMaxLength = Constants.MAX_LENGTH_TEAM_MESSAGE - trademark.length;
             let strings = message.match(new RegExp(`.{1,${messageMaxLength}}(\\s|$)`, 'g'));
 
             if (ignoreForward) {
@@ -29,24 +43,10 @@ class RustPlus extends RP {
 
             for (let msg of strings) {
                 if (!this.generalSettings.muteInGameBotMessages) {
-                    this.oldsendTeamMessage(`${trademark}${msg}`);
+                    await this.oldsendTeamMessageAsync(`${trademark}${msg}`);
                 }
             }
         }
-
-        this.logger = null;
-        this.firstPoll = true;
-        this.generalSettings = null;
-        this.notificationSettings = null;
-
-        /* Map meta */
-        this.intervalId = 0;
-        this.debug = false;
-        this.mapSize = null;
-        this.mapWidth = null;
-        this.mapHeight = null;
-        this.mapOceanMargin = null;
-        this.mapMonuments = null;
 
         /* Event active entities */
         this.activeCargoShips = new Object();
@@ -84,19 +84,11 @@ class RustPlus extends RP {
         this.passedFirstSunriseOrSunset = false;
         this.startTimeObject = new Object();
 
-        this.team = null;
-        this.time = null;
-        this.info = null;
         this.markers = new Object();
 
         this.informationIntervalCounter = 0;
 
         this.interactionSwitches = [];
-
-        this.deleted = false;
-        this.connected = false;
-        this.isReconnect = false;
-        this.firstTime = true;
 
         /* Load rustplus events */
         this.loadEvents();
@@ -144,26 +136,19 @@ class RustPlus extends RP {
         this.logger.log(title, text, level);
     }
 
-    isResponseValid(response) {
-        if (response.response.hasOwnProperty('error')) {
-            return false;
-        }
-        return true;
-    }
-
-    printCommandOutput(rustplus, str, type = 'COMMAND') {
-        rustplus.sendTeamMessage(str, !rustplus.generalSettings.showTrademark);
+    async printCommandOutput(rustplus, str, type = 'COMMAND') {
+        await rustplus.sendTeamMessageAsync(str, !rustplus.generalSettings.showTrademark);
         rustplus.log(type, str);
     }
 
-    sendEvent(setting, text, firstPoll = false, image = null) {
+    async sendEvent(setting, text, firstPoll = false, image = null) {
         let img = (image !== null) ? image : setting.image;
 
         if (!firstPoll && setting.discord) {
             this.sendDiscordEvent(text, img)
         }
         if (!firstPoll && setting.inGame) {
-            this.sendTeamMessage(`${text}`, !this.generalSettings.showTrademark);
+            await this.sendTeamMessageAsync(`${text}`, !this.generalSettings.showTrademark);
         }
         this.log('EVENT', text);
     }
@@ -173,7 +158,7 @@ class RustPlus extends RP {
         let channel = DiscordTools.getTextChannelById(this.guildId, instance.channelId.events);
 
         if (channel !== undefined) {
-            let file = new MessageAttachment(`src/images/${image}`);
+            let file = new MessageAttachment(`src/resources/images/events/${image}`);
             let embed = new MessageEmbed()
                 .setColor('#ce412b')
                 .setThumbnail(`attachment://${image}`)
@@ -197,133 +182,239 @@ class RustPlus extends RP {
         this.itemsToLookForId = this.itemsToLookForId.filter(e => e !== id);
     }
 
-    async turnSmartSwitchOnAsync(id, timeout = 2000) {
-        return await this.setEntityValueAsync(id, true, timeout);
-    }
-
-    async turnSmartSwitchOffAsync(id, timeout = 2000) {
-        return await this.setEntityValueAsync(id, false, timeout);
-    }
-
-    async setEntityValueAsync(id, value, timeout = 2000) {
-        return await this.sendRequestAsync({
-            entityId: id,
-            setEntityValue: {
-                value: value
-            }
-        }, timeout).catch((e) => {
+    async turnSmartSwitchOnAsync(id, timeout = 10000) {
+        try {
+            return await this.setEntityValueAsync(id, true, timeout);
+        }
+        catch (e) {
             return e;
-        });
+        }
     }
 
-    async sendTeamMessageAsync(message, timeout = 2000) {
-        return await this.sendRequestAsync({
-            sendTeamMessage: {
-                message: message
-            }
-        }, timeout).catch((e) => {
+    async turnSmartSwitchOffAsync(id, timeout = 10000) {
+        try {
+            return await this.setEntityValueAsync(id, false, timeout);
+        }
+        catch (e) {
             return e;
-        });
+        }
     }
 
-    async getEntityInfoAsync(id, timeout = 2000) {
-        return await this.sendRequestAsync({
-            entityId: id,
-            getEntityInfo: {}
-        }, timeout).catch((e) => {
-            return e;
-        });
+    async turnSmartSwitchAsync(id, value, timeout = 10000) {
+        if (value) {
+            return await this.turnSmartSwitchOnAsync(id, timeout);
+        }
+        else {
+            return await this.turnSmartSwitchOffAsync(id, timeout);
+        }
     }
 
-    async getMapAsync(timeout = 2000) {
-        return await this.sendRequestAsync({
-            getMap: {}
-        }, timeout).catch((e) => {
+    async setEntityValueAsync(id, value, timeout = 10000) {
+        try {
+            return await this.sendRequestAsync({
+                entityId: id,
+                setEntityValue: {
+                    value: value
+                }
+            }, timeout).catch((e) => {
+                return e;
+            });
+        }
+        catch (e) {
             return e;
-        });
+        }
     }
 
-    async getTimeAsync(timeout = 2000) {
-        return await this.sendRequestAsync({
-            getTime: {}
-        }, timeout).catch((e) => {
+    async sendTeamMessageAsync(message, timeout = 10000) {
+        try {
+            return await this.sendRequestAsync({
+                sendTeamMessage: {
+                    message: message
+                }
+            }, timeout).catch((e) => {
+                return e;
+            });
+        }
+        catch (e) {
             return e;
-        });
+        }
     }
 
-    async getMapMarkersAsync(timeout = 2000) {
-        return await this.sendRequestAsync({
-            getMapMarkers: {}
-        }, timeout).catch((e) => {
+    async getEntityInfoAsync(id, timeout = 10000) {
+        try {
+            return await this.sendRequestAsync({
+                entityId: id,
+                getEntityInfo: {}
+            }, timeout).catch((e) => {
+                return e;
+            });
+        }
+        catch (e) {
             return e;
-        });
+        }
     }
 
-    async getInfoAsync(timeout = 2000) {
-        return await this.sendRequestAsync({
-            getInfo: {}
-        }, timeout).catch((e) => {
+    async getMapAsync(timeout = 30000) {
+        try {
+            return await this.sendRequestAsync({
+                getMap: {}
+            }, timeout).catch((e) => {
+                return e;
+            });
+        }
+        catch (e) {
             return e;
-        });
+        }
     }
 
-    async getTeamInfoAsync(timeout = 2000) {
-        return await this.sendRequestAsync({
-            getTeamInfo: {}
-        }, timeout).catch((e) => {
+    async getTimeAsync(timeout = 10000) {
+        try {
+            return await this.sendRequestAsync({
+                getTime: {}
+            }, timeout).catch((e) => {
+                return e;
+            });
+        }
+        catch (e) {
             return e;
-        });
+        }
     }
 
-    async promoteToLeaderAsync(steamId, timeout = 2000) {
-        return await this.sendRequestAsync({
-            promoteToLeader: {
-                steamId: steamId
-            }
-        }, timeout).catch((e) => {
+    async getMapMarkersAsync(timeout = 10000) {
+        try {
+            return await this.sendRequestAsync({
+                getMapMarkers: {}
+            }, timeout).catch((e) => {
+                return e;
+            });
+        }
+        catch (e) {
             return e;
-        });
+        }
     }
 
-    async getTeamChatAsync(timeout = 2000) {
-        return await this.sendRequestAsync({
-            getTeamChat: {
-
-            }
-        }, timeout).catch((e) => {
+    async getInfoAsync(timeout = 10000) {
+        try {
+            return await this.sendRequestAsync({
+                getInfo: {}
+            }, timeout).catch((e) => {
+                return e;
+            });
+        }
+        catch (e) {
             return e;
-        });
+        }
     }
 
-    async checkSubscriptionAsync(id, timeout = 2000) {
-        return await this.sendRequestAsync({
-            entityId: id,
-            checkSubscription: {}
-        }, timeout).catch((e) => {
+    async getTeamInfoAsync(timeout = 10000) {
+        try {
+            return await this.sendRequestAsync({
+                getTeamInfo: {}
+            }, timeout).catch((e) => {
+                return e;
+            });
+        }
+        catch (e) {
             return e;
-        });
+        }
     }
 
-    async setSubscriptionAsync(id, value, timeout = 2000) {
-        return await this.sendRequestAsync({
-            entityId: id,
-            setSubscription: {
-                value: value
-            }
-        }, timeout).catch((e) => {
+    async promoteToLeaderAsync(steamId, timeout = 10000) {
+        try {
+            return await this.sendRequestAsync({
+                promoteToLeader: {
+                    steamId: steamId
+                }
+            }, timeout).catch((e) => {
+                return e;
+            });
+        }
+        catch (e) {
             return e;
-        });
+        }
     }
 
-    async getCameraFrameAsync(identifier, frame, timeout = 2000) {
-        return await this.sendRequestAsync({
-            getCameraFrame: {
-                identifier: identifier,
-                frame: frame
-            }
-        }, timeout).catch((e) => {
+    async getTeamChatAsync(timeout = 10000) {
+        try {
+            return await this.sendRequestAsync({
+                getTeamChat: {
+
+                }
+            }, timeout).catch((e) => {
+                return e;
+            })
+        }
+        catch (e) {
             return e;
-        });
+        }
+
+    }
+
+    async checkSubscriptionAsync(id, timeout = 10000) {
+        try {
+            return await this.sendRequestAsync({
+                entityId: id,
+                checkSubscription: {}
+            }, timeout).catch((e) => {
+                return e;
+            });
+        }
+        catch (e) {
+            return e;
+        }
+    }
+
+    async setSubscriptionAsync(id, value, timeout = 10000) {
+        try {
+            return await this.sendRequestAsync({
+                entityId: id,
+                setSubscription: {
+                    value: value
+                }
+            }, timeout).catch((e) => {
+                return e;
+            });
+        }
+        catch (e) {
+            return e;
+        }
+    }
+
+    async getCameraFrameAsync(identifier, frame, timeout = 10000) {
+        try {
+            return await this.sendRequestAsync({
+                getCameraFrame: {
+                    identifier: identifier,
+                    frame: frame
+                }
+            }, timeout).catch((e) => {
+                return e;
+            });
+        }
+        catch (e) {
+            return e;
+        }
+    }
+
+    async isResponseValid(response) {
+        if (response === undefined) {
+            this.log('ERROR', 'Response is undefined.', 'error');
+            return false;
+        }
+        else if (response.toString() === 'Error: Timeout reached while waiting for response') {
+            this.log('ERROR', 'Timeout reached while waiting for response.', 'error');
+            return false;
+        }
+        else if (response.hasOwnProperty('error')) {
+            this.log('ERROR', `Response contain error property with value: ${response.error}.`, 'error');
+            return false;
+        }
+        else if (Object.keys(response).length === 0) {
+            this.log('ERROR', 'Response is empty.', 'error');
+            clearInterval(this.intervalId);
+            return false;
+        }
+        return true;
     }
 }
 

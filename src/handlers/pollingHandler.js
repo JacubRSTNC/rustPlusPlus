@@ -10,57 +10,51 @@ const TimeHandler = require('../handlers/timeHandler.js');
 const TeamHandler = require('../handlers/teamHandler.js');
 const InformationHandler = require('../handlers/informationHandler.js');
 
-const Map = require('../util/map.js');
 const Time = require('../structures/Time');
 const Team = require('../structures/Team');
 const Info = require('../structures/Info');
 
 module.exports = {
-    pollingHandler: function (rustplus, client) {
-        /* Continuous polling of server info, map markers, team info and time. */
-        rustplus.getInfo((info) => {
-            if (!rustplus.isResponseValid(info)) return;
-            rustplus.getMapMarkers((mapMarkers) => {
-                if (!rustplus.isResponseValid(mapMarkers)) return;
-                rustplus.getTeamInfo(async (teamInfo) => {
-                    if (!rustplus.isResponseValid(teamInfo)) return;
-                    rustplus.getTime((time) => {
-                        if (!rustplus.isResponseValid(time)) return;
+    pollingHandler: async function (rustplus, client) {
+        /* Poll information such as info, mapMarkers, teamInfo and time */
+        let info = await rustplus.getInfoAsync();
+        if (!(await rustplus.isResponseValid(info))) return;
+        let mapMarkers = await rustplus.getMapMarkersAsync();
+        if (!(await rustplus.isResponseValid(mapMarkers))) return;
+        let teamInfo = await rustplus.getTeamInfoAsync();
+        if (!(await rustplus.isResponseValid(teamInfo))) return;
+        let time = await rustplus.getTimeAsync();
+        if (!(await rustplus.isResponseValid(time))) return;
 
-                        if (rustplus.firstPoll) {
-                            rustplus.mapSize = Map.getCorrectedMapSize(info.response.info.mapSize);
-                            rustplus.time = new Time(time.response.time, rustplus, client);
-                            rustplus.team = new Team(teamInfo.response.teamInfo, rustplus);
-                            rustplus.info = new Info(info.response.info);
-                        }
+        if (rustplus.firstPoll) {
+            rustplus.info = new Info(info.info);
+            rustplus.time = new Time(time.time, rustplus, client);
+            rustplus.team = new Team(teamInfo.teamInfo, rustplus);
+        }
 
-                        module.exports.handlers(rustplus, client, info, mapMarkers, teamInfo, time);
-                        rustplus.firstPoll = false;
-                    });
-                });
-            });
-        });
+        module.exports.handlers(rustplus, client, info, mapMarkers, teamInfo, time);
+        rustplus.firstPoll = false;
     },
 
     handlers: function (rustplus, client, info, mapMarkers, teamInfo, time) {
         /* Module handlers */
-        SwitchHandler.handler(rustplus, client, time.response.time);
-        TimeHandler.handler(rustplus, client, time.response.time);
-        TeamHandler.handler(rustplus, client, teamInfo.response.teamInfo);
+        SwitchHandler.handler(rustplus, client, time.time);
+        TimeHandler.handler(rustplus, client, time.time);
+        TeamHandler.handler(rustplus, client, teamInfo.teamInfo);
 
         /* Update modules */
-        rustplus.time.updateTime(time.response.time);
-        rustplus.team.updateTeam(teamInfo.response.teamInfo);
-        rustplus.info.updateInfo(info.response.info);
+        rustplus.time.updateTime(time.time);
+        rustplus.team.updateTeam(teamInfo.teamInfo);
+        rustplus.info.updateInfo(info.info);
 
-        InformationHandler.handler(rustplus, client, info, mapMarkers, teamInfo, time);
+        InformationHandler.handler(rustplus, client);
 
         /* In-game event handlers */
-        CargoShip.handler(rustplus, client, info, mapMarkers, teamInfo, time);
-        PatrolHelicopter.handler(rustplus, client, info, mapMarkers, teamInfo, time);
-        Explosion.handler(rustplus, client, info, mapMarkers, teamInfo, time);
-        LockedCrate.handler(rustplus, client, info, mapMarkers, teamInfo, time);
-        OilRig.handler(rustplus, client, info, mapMarkers, teamInfo, time);
-        VendingMachine.handler(rustplus, client, info, mapMarkers, teamInfo, time);
+        CargoShip.handler(rustplus, mapMarkers.mapMarkers);
+        PatrolHelicopter.handler(rustplus, mapMarkers.mapMarkers);
+        Explosion.handler(rustplus, mapMarkers.mapMarkers);
+        LockedCrate.handler(rustplus, mapMarkers.mapMarkers);
+        OilRig.handler(rustplus, mapMarkers.mapMarkers);
+        VendingMachine.handler(rustplus, mapMarkers.mapMarkers);
     },
 };

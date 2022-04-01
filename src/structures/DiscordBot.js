@@ -4,7 +4,6 @@ const Config = require('../../config.json');
 const RustPlus = require('../structures/RustPlus');
 const Logger = require('./Logger.js');
 const path = require('path');
-const DiscordTools = require('../discordTools/discordTools.js');
 
 class DiscordBot extends Client {
     constructor(props) {
@@ -68,6 +67,12 @@ class DiscordBot extends Client {
     async setupGuild(guild) {
         require('../util/CreateInstanceFile')(this, guild);
         require('../util/CreateCredentialsFile')(this, guild);
+
+        /* If maps/ directory does not exist, create it */
+        if (!fs.existsSync(`${__dirname}/../resources/images/maps`)) {
+            fs.mkdirSync(`${__dirname}/../resources/images/maps`);
+        }
+
         await require('../discordTools/RegisterSlashCommands')(this, guild);
 
         let category = await require('../discordTools/SetupGuildCategory')(this, guild);

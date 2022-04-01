@@ -1,26 +1,10 @@
 const Timer = require('../util/timer');
 const { MessageEmbed, MessageAttachment } = require('discord.js');
 const DiscordTools = require('../discordTools/discordTools.js');
-
-const STEAM_LINK = 'https://steamcommunity.com/profiles/';
-const ONLINE = ':green_circle:';
-const OFFLINE = ':red_circle:';
-const AFK = ':yellow_circle:';
-const ALIVE = ':nerd:';
-const SLEEPING = ':sleeping:';
-const DEAD = ':skull:';
-const LEADER = ':crown:';
-const DAY = ':sunny:';
-const NIGHT = ':crescent_moon:';
-
-const SERVER_IMG = 'server_info_logo.png';
-const EVENT_IMG = 'event_info_logo.png';
-const TEAM_IMG = 'team_info_logo.png';
-
-const AFK_TIME_SECONDS = 5 * 60; /* 5 Minutes */
+const Constants = require('../util/constants.js');
 
 module.exports = {
-    handler: async function (rustplus, client, info, mapMarkers, teamInfo, time) {
+    handler: async function (rustplus, client) {
         let instance = client.readInstanceFile(rustplus.guildId);
         let channelId = instance.channelId.information;
 
@@ -30,7 +14,7 @@ module.exports = {
         if (messageId !== null) {
             message = await DiscordTools.getMessageById(rustplus.guildId, channelId, messageId);
         }
-        await module.exports.updateServerInformation(rustplus, client, info, mapMarkers, teamInfo, time, instance, message);
+        await module.exports.updateServerInformation(rustplus, client, instance, message);
 
         /* Update Event Information embed */
         messageId = instance.informationMessageId.event;
@@ -38,7 +22,7 @@ module.exports = {
         if (messageId !== null) {
             message = await DiscordTools.getMessageById(rustplus.guildId, channelId, messageId);
         }
-        await module.exports.updateEventInformation(rustplus, client, info, mapMarkers, teamInfo, time, instance, message);
+        await module.exports.updateEventInformation(rustplus, client, instance, message);
 
         /* Update Team Information embed */
         messageId = instance.informationMessageId.team;
@@ -46,7 +30,7 @@ module.exports = {
         if (messageId !== null) {
             message = await DiscordTools.getMessageById(rustplus.guildId, channelId, messageId);
         }
-        await module.exports.updateTeamInformation(rustplus, client, info, mapMarkers, teamInfo, time, instance, message);
+        await module.exports.updateTeamInformation(rustplus, client, instance, message);
 
         if (rustplus.informationIntervalCounter === 5) {
             rustplus.informationIntervalCounter = 0;
@@ -56,27 +40,31 @@ module.exports = {
         }
     },
 
-    updateServerInformation: async function (rustplus, client, info, mapMarkers, teamInfo, time, instance, message) {
+    updateServerInformation: async function (rustplus, client, instance, message) {
         const serverName = rustplus.info.name;
         const sinceWipe = rustplus.info.getSecondsSinceWipe();
         const wipeDay = `Day ${Math.ceil(sinceWipe / (60 * 60 * 24))}`;
 
         const serverTime = `${Timer.convertDecimalToHoursMinutes(rustplus.time.time)}`;
         const timeLeft = rustplus.time.getTimeTillDayOrNight('s');
-        const timeLeftTitle = 'Time till ' + ((rustplus.time.isDay()) ? `${NIGHT}` : `${DAY}`);
+        const timeLeftTitle = 'Time till ' + ((rustplus.time.isDay()) ? `${Constants.NIGHT_EMOJI}` : `${Constants.DAY_EMOJI}`);
 
-        const pop = getPopString(info);
+        let pop = `${rustplus.info.players}`;
+        if (rustplus.info.isQueue()) {
+            pop += `(${rustplus.info.queuedPlayers})`;
+        }
+        pop += `/${rustplus.info.maxPlayers}`;
 
         const map = `${rustplus.info.map}`;
         const mapSize = `${rustplus.info.mapSize}`;
         const mapSeed = `${rustplus.info.seed}`;
         const mapSalt = `${rustplus.info.salt}`;
 
-        let file = new MessageAttachment(`src/images/${SERVER_IMG}`)
+        let file = new MessageAttachment('src/resources/images/server_info_logo.png');
         let embed = new MessageEmbed()
             .setTitle('Server Information')
             .setColor('#ce412b')
-            .setThumbnail(`attachment://${SERVER_IMG}`)
+            .setThumbnail('attachment://server_info_logo.png')
             .setDescription(serverName)
             .addFields(
                 { name: 'Players', value: pop, inline: true },
@@ -104,7 +92,7 @@ module.exports = {
         }
     },
 
-    updateEventInformation: async function (rustplus, client, info, mapMarkers, teamInfo, time, instance, message) {
+    updateEventInformation: async function (rustplus, client, instance, message) {
         /* Cargoship */
         let cargoship = '';
         for (const [id, timer] of Object.entries(rustplus.cargoShipEgressTimers)) {
@@ -268,11 +256,11 @@ module.exports = {
         }
 
 
-        let file = new MessageAttachment(`src/images/${EVENT_IMG}`)
+        let file = new MessageAttachment('src/resources/images/event_info_logo.png')
         let embed = new MessageEmbed()
             .setTitle('Event Information')
             .setColor('#ce412b')
-            .setThumbnail(`attachment://${EVENT_IMG}`)
+            .setThumbnail('attachment://event_info_logo.png')
             .setDescription('In-game event information')
             .addFields(
                 { name: 'Cargoship', value: cargoship, inline: true },
@@ -291,36 +279,36 @@ module.exports = {
         }
     },
 
-    updateTeamInformation: async function (rustplus, client, info, mapMarkers, teamInfo, time, instance, message) {
+    updateTeamInformation: async function (rustplus, client, instance, message) {
         let names = '';
         let status = '';
         let locations = '';
         for (let player of rustplus.team.players) {
             if (rustplus.team.teamSize < 12) {
-                names += `[${player.name}](${STEAM_LINK}${player.steamId})`;
+                names += `[${player.name}](${Constants.STEAM_PROFILES_URL}${player.steamId})`;
             }
             else {
                 names += `${player.name}`;
             }
 
-            names += (player.teamLeader) ? `${LEADER}\n` : '\n';
+            names += (player.teamLeader) ? `${Constants.LEADER_EMOJI}\n` : '\n';
             locations += (player.isOnline || player.isAlive) ? `${player.pos}\n` : '-\n';
 
             if (player.isOnline) {
-                status += (player.getAfkSeconds() >= AFK_TIME_SECONDS) ?
-                    `${AFK}${(player.isAlive) ? SLEEPING : DEAD} ${player.getAfkTime('dhs')}\n` :
-                    `${ONLINE}${(player.isAlive) ? ALIVE : DEAD}\n`;
+                status += (player.getAfkSeconds() >= Constants.AFK_TIME_SECONDS) ?
+                    `${Constants.AFK_EMOJI}${(player.isAlive) ? Constants.SLEEPING_EMOJI : Constants.DEAD_EMOJI} ${player.getAfkTime('dhs')}\n` :
+                    `${Constants.ONLINE_EMOJI}${(player.isAlive) ? Constants.ALIVE_EMOJI : Constants.DEAD_EMOJI}\n`;
             }
             else {
-                status += `${OFFLINE}${(player.isAlive) ? SLEEPING : DEAD}\n`;
+                status += `${Constants.OFFLINE_EMOJI}${(player.isAlive) ? Constants.SLEEPING_EMOJI : Constants.DEAD_EMOJI}\n`;
             }
         }
 
-        let file = new MessageAttachment(`src/images/${TEAM_IMG}`)
+        let file = new MessageAttachment('src/resources/images/team_info_logo.png')
         let embed = new MessageEmbed()
             .setTitle('Team Member Information')
             .setColor('#ce412b')
-            .setThumbnail(`attachment://${TEAM_IMG}`)
+            .setThumbnail('attachment://team_info_logo.png')
             .addFields(
                 { name: 'Team Member', value: names, inline: true },
                 { name: 'Status', value: status, inline: true },
@@ -354,18 +342,4 @@ async function sendInformationEmbed(rustplus, client, instance, embed, file, mes
         await message.edit({ embeds: [embed] });
     }
 
-}
-
-function getPopString(info) {
-    const players = info.response.info.players;
-    const maxPlayers = info.response.info.maxPlayers;
-    const queuedPlayers = info.response.info.queuedPlayers;
-
-    let pop = `${players}`;
-    if (queuedPlayers !== 0) {
-        pop += `(${queuedPlayers})`;
-    }
-    pop += `/${maxPlayers}`;
-
-    return pop;
 }

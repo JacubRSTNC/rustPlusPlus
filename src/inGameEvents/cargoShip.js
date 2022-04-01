@@ -1,10 +1,10 @@
-const Constants = require('../util/eventConstants.js');
+const Constants = require('../util/constants.js');
 const Map = require('../util/map.js');
 const RustPlusTypes = require('../util/rustplusTypes.js');
 const Timer = require('../util/timer');
 
 module.exports = {
-    handler: function (rustplus, client, info, mapMarkers, teamInfo, time) {
+    handler: function (rustplus, mapMarkers) {
         /* Check if new Cargo Ship is detected */
         module.exports.checkNewCargoShipDetected(rustplus, mapMarkers);
 
@@ -13,7 +13,7 @@ module.exports = {
     },
 
     checkNewCargoShipDetected: function (rustplus, mapMarkers) {
-        for (let marker of mapMarkers.response.mapMarkers.markers) {
+        for (let marker of mapMarkers.markers) {
             if (marker.type === RustPlusTypes.MarkerType.CargoShip) {
                 let mapSize = rustplus.info.correctedMapSize;
                 let pos = Map.getPos(marker.x, marker.y, mapSize);
@@ -38,7 +38,7 @@ module.exports = {
 
                         rustplus.cargoShipEgressTimers[marker.id] = new Timer.timer(
                             module.exports.notifyCargoShipEgress,
-                            Constants.CARGO_SHIP_EGRESS_TIME_MS,
+                            Constants.DEFAULT_CARGO_SHIP_EGRESS_TIME_MS,
                             rustplus,
                             marker.id);
                         rustplus.cargoShipEgressTimers[marker.id].start();
@@ -63,7 +63,7 @@ module.exports = {
         let newActiveCargoShipObject = new Object();
         for (const [id, content] of Object.entries(rustplus.activeCargoShips)) {
             let active = false;
-            for (let marker of mapMarkers.response.mapMarkers.markers) {
+            for (let marker of mapMarkers.markers) {
                 if (marker.type === RustPlusTypes.MarkerType.CargoShip) {
                     if (marker.id === parseInt(id)) {
                         /* Cargo Ship marker is still visable on the map */

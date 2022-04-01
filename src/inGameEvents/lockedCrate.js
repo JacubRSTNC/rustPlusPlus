@@ -1,15 +1,11 @@
-const Constants = require('../util/eventConstants.js');
+const Constants = require('../util/constants.js');
 const Map = require('../util/map.js');
-const MonNames = require('../util/monumentNames.js');
+const Monuments = require('../util/monuments.js');
 const RustPlusTypes = require('../util/rustplusTypes.js');
 const Timer = require('../util/timer');
 
-const LOCKED_CRATE_MONUMENT_RADIUS = 150;
-const LOCKED_CRATE_CARGO_SHIP_RADIUS = 100;
-const LOCKED_CRATE_OIL_RIG_REFRESH_RADIUS = 5;
-
 module.exports = {
-    handler: function (rustplus, client, info, mapMarkers, teamInfo, time) {
+    handler: function (rustplus, mapMarkers) {
         /* Check if new Locked Crate is detected */
         module.exports.checkNewLockedCrateDetected(rustplus, mapMarkers);
 
@@ -18,7 +14,7 @@ module.exports = {
     },
 
     checkNewLockedCrateDetected: function (rustplus, mapMarkers) {
-        for (let marker of mapMarkers.response.mapMarkers.markers) {
+        for (let marker of mapMarkers.markers) {
             if (marker.type === RustPlusTypes.MarkerType.LockedCrate) {
                 let mapSize = rustplus.info.correctedMapSize;
                 let pos = Map.getPos(marker.x, marker.y, mapSize);
@@ -50,12 +46,12 @@ module.exports = {
                         }
                     }
                     else if (closestMonument.token === 'oil_rig_small' &&
-                        distance < LOCKED_CRATE_MONUMENT_RADIUS) {
+                        distance < Constants.LOCKED_CRATE_MONUMENT_RADIUS) {
                         if (rustplus.smallOilRigLockedCratesLeft.some(e =>
                             e.type === 'oil_rig_small' &&
-                            Map.getDistance(e.x, e.y, marker.x, marker.y) < LOCKED_CRATE_OIL_RIG_REFRESH_RADIUS)) {
+                            Map.getDistance(e.x, e.y, marker.x, marker.y) < Constants.LOCKED_CRATE_OIL_RIG_REFRESH_RADIUS)) {
                             /* Refresh of Locked Crate at Small Oil Rig, Scenario 1 */
-                            let oilRig = MonNames.Monument['oil_rig_small'];
+                            let oilRig = Monuments.Monument['oil_rig_small'].clean;
                             rustplus.sendEvent(
                                 rustplus.notificationSettings.lockedCrateOilRigRefreshed,
                                 `Locked Crate just got refreshed on Small ${oilRig} at ${pos}.`,
@@ -65,7 +61,7 @@ module.exports = {
                             for (let crate of rustplus.smallOilRigLockedCratesLeft) {
                                 if (crate.type === 'oil_rig_small' &&
                                     Map.getDistance(crate.x, crate.y, marker.x, marker.y) <
-                                    LOCKED_CRATE_OIL_RIG_REFRESH_RADIUS) {
+                                    Constants.LOCKED_CRATE_OIL_RIG_REFRESH_RADIUS) {
                                     delete rustplus.activeLockedCrates[crate.id];
                                 }
                             }
@@ -75,9 +71,9 @@ module.exports = {
                             for (const [id, content] of Object.entries(rustplus.activeLockedCrates)) {
                                 if (content.type === 'oil_rig_small' &&
                                     Map.getDistance(content.x, content.y, marker.x, marker.y) <
-                                    LOCKED_CRATE_OIL_RIG_REFRESH_RADIUS) {
+                                    Constants.LOCKED_CRATE_OIL_RIG_REFRESH_RADIUS) {
                                     /* Refresh of Locked Crate at Small Oil Rig, Scenario 2 */
-                                    let oilRig = MonNames.Monument['oil_rig_small'];
+                                    let oilRig = Monuments.Monument['oil_rig_small'].clean;
                                     rustplus.sendEvent(
                                         rustplus.notificationSettings.lockedCrateOilRigRefreshed,
                                         `Locked Crate just got refreshed on Small ${oilRig} at ${pos}.`,
@@ -88,7 +84,7 @@ module.exports = {
                             }
 
                             if (!refreshed && !rustplus.firstPoll) {
-                                let oilRig = MonNames.Monument['oil_rig_small'];
+                                let oilRig = Monuments.Monument['oil_rig_small'].clean;
                                 rustplus.sendEvent(
                                     rustplus.notificationSettings.lockedCrateRespawnOilRig,
                                     `Locked Crate just respawned on Small ${oilRig} at ${pos}.`,
@@ -100,12 +96,12 @@ module.exports = {
                         rustplus.activeLockedCrates[marker.id].type = 'oil_rig_small';
                     }
                     else if (closestMonument.token === 'large_oil_rig' &&
-                        distance < LOCKED_CRATE_MONUMENT_RADIUS) {
+                        distance < Constants.LOCKED_CRATE_MONUMENT_RADIUS) {
                         if (rustplus.largeOilRigLockedCratesLeft.some(e =>
                             e.type === 'large_oil_rig' &&
-                            Map.getDistance(e.x, e.y, marker.x, marker.y) < LOCKED_CRATE_OIL_RIG_REFRESH_RADIUS)) {
+                            Map.getDistance(e.x, e.y, marker.x, marker.y) < Constants.LOCKED_CRATE_OIL_RIG_REFRESH_RADIUS)) {
                             /* Refresh of Locked Crate at Large Oil Rig, Scenario 1 */
-                            let oilRig = MonNames.Monument['large_oil_rig'];
+                            let oilRig = Monuments.Monument['large_oil_rig'].clean;
                             rustplus.sendEvent(
                                 rustplus.notificationSettings.lockedCrateOilRigRefreshed,
                                 `Locked Crate just got refreshed on ${oilRig} at ${pos}.`,
@@ -115,7 +111,7 @@ module.exports = {
                             for (let crate of rustplus.largeOilRigLockedCratesLeft) {
                                 if (crate.type === 'large_oil_rig' &&
                                     Map.getDistance(crate.x, crate.y, marker.x, marker.y) <
-                                    LOCKED_CRATE_OIL_RIG_REFRESH_RADIUS) {
+                                    Constants.LOCKED_CRATE_OIL_RIG_REFRESH_RADIUS) {
                                     delete rustplus.activeLockedCrates[crate.id];
                                 }
                             }
@@ -125,9 +121,9 @@ module.exports = {
                             for (const [id, content] of Object.entries(rustplus.activeLockedCrates)) {
                                 if (content.type === 'large_oil_rig' &&
                                     Map.getDistance(content.x, content.y, marker.x, marker.y) <
-                                    LOCKED_CRATE_OIL_RIG_REFRESH_RADIUS) {
+                                    Constants.LOCKED_CRATE_OIL_RIG_REFRESH_RADIUS) {
                                     /* Refresh of Locked Crate at Large Oil Rig, Scenario 2 */
-                                    let oilRig = MonNames.Monument['large_oil_rig'];
+                                    let oilRig = Monuments.Monument['large_oil_rig'].clean;
                                     rustplus.sendEvent(
                                         rustplus.notificationSettings.lockedCrateOilRigRefreshed,
                                         `Locked Crate just got refreshed on ${oilRig} at ${pos}.`,
@@ -138,7 +134,7 @@ module.exports = {
                             }
 
                             if (!refreshed && !rustplus.firstPoll) {
-                                let oilRig = MonNames.Monument['large_oil_rig'];
+                                let oilRig = Monuments.Monument['large_oil_rig'].clean;
                                 rustplus.sendEvent(
                                     rustplus.notificationSettings.lockedCrateOilRigRefreshed,
                                     `Locked Crate just respawned on ${oilRig} at ${pos}.`,
@@ -149,7 +145,7 @@ module.exports = {
 
                         rustplus.activeLockedCrates[marker.id].type = 'large_oil_rig';
                     }
-                    else if (distance > LOCKED_CRATE_MONUMENT_RADIUS) {
+                    else if (distance > Constants.LOCKED_CRATE_MONUMENT_RADIUS) {
                         if (!Map.isOutsideGridSystem(marker.x, marker.y, mapSize)) {
                             if (!rustplus.firstPoll) {
                                 rustplus.sendEvent(
@@ -170,33 +166,36 @@ module.exports = {
                         }
                     }
                     else {
+                        let name = (Monuments.Monument.hasOwnProperty(closestMonument.token)) ?
+                            Monuments.Monument[closestMonument.token].clean : closestMonument.token;
+
                         if (!rustplus.firstPoll) {
                             rustplus.timeSinceChinookDroppedCrate = new Date();
 
                             rustplus.sendEvent(
                                 rustplus.notificationSettings.lockedCrateDroppedAtMonument,
                                 'Locked Crate just got dropped by Chinook 47 at ' +
-                                `${MonNames.Monument[closestMonument.token]}.`);
+                                `${name}.`);
 
                             rustplus.lockedCrateDespawnTimers[marker.id] = new Timer.timer(
                                 () => { },
-                                Constants.LOCKED_CRATE_DESPAWN_TIME_MS);
+                                Constants.DEFAULT_LOCKED_CRATE_DESPAWN_TIME_MS);
                             rustplus.lockedCrateDespawnTimers[marker.id].start();
 
                             rustplus.lockedCrateDespawnWarningTimers[marker.id] = new Timer.timer(
                                 module.exports.notifyLockedCrateWarningDespawn,
-                                Constants.LOCKED_CRATE_DESPAWN_TIME_MS - Constants.LOCKED_CRATE_DESPAWN_WARNING_TIME_MS,
+                                Constants.DEFAULT_LOCKED_CRATE_DESPAWN_TIME_MS - Constants.DEFAULT_LOCKED_CRATE_DESPAWN_WARNING_TIME_MS,
                                 rustplus,
-                                MonNames.Monument[closestMonument.token]);
+                                name);
                             rustplus.lockedCrateDespawnWarningTimers[marker.id].start();
                         }
                         else {
                             rustplus.sendEvent(
                                 rustplus.notificationSettings.lockedCrateDroppedAtMonument,
-                                `Locked Crate located at ${MonNames.Monument[closestMonument.token]}.`);
+                                `Locked Crate located at ${Monuments.Monument[closestMonument.token].clean}.`);
                         }
 
-                        rustplus.activeLockedCrates[marker.id].type = MonNames.Monument[closestMonument.token];
+                        rustplus.activeLockedCrates[marker.id].type = name;
                     }
                 }
                 else {
@@ -217,7 +216,7 @@ module.exports = {
         let newActiveLockedCratesObject = new Object();
         for (const [id, content] of Object.entries(rustplus.activeLockedCrates)) {
             let active = false;
-            for (let marker of mapMarkers.response.mapMarkers.markers) {
+            for (let marker of mapMarkers.markers) {
                 if (marker.type === RustPlusTypes.MarkerType.LockedCrate) {
                     if (marker.id === parseInt(id)) {
                         /* Locked Crate marker is still visable on the map */
@@ -270,7 +269,7 @@ module.exports = {
                     for (const [idx, contentx] of Object.entries(rustplus.activeLockedCrates)) {
                         if (contentx.type === content.type &&
                             Map.getDistance(contentx.x, contentx.y, content.x, content.y) <
-                            LOCKED_CRATE_OIL_RIG_REFRESH_RADIUS &&
+                            Constants.LOCKED_CRATE_OIL_RIG_REFRESH_RADIUS &&
                             idx !== id) {
                             /* Refresh of Locked Crate at Small Oil Rig, Scenario 2 */
                             refreshed = true;
@@ -316,7 +315,7 @@ module.exports = {
                     for (const [idx, contentx] of Object.entries(rustplus.activeLockedCrates)) {
                         if (contentx.type === content.type &&
                             Map.getDistance(contentx.x, contentx.y, content.x, content.y) <
-                            LOCKED_CRATE_OIL_RIG_REFRESH_RADIUS &&
+                            Constants.LOCKED_CRATE_OIL_RIG_REFRESH_RADIUS &&
                             idx !== id) {
                             /* Refresh of Locked Crate at Large Oil Rig, Scenario 2 */
                             refreshed = true;
@@ -401,7 +400,7 @@ module.exports = {
     getClosestMonument: function (x, y, rustplus) {
         let minDistance = 1000000;
         let closestMonument = null;
-        for (let monument of rustplus.mapMonuments) {
+        for (let monument of rustplus.map.monuments) {
             let distance = Map.getDistance(x, y, monument.x, monument.y);
             if (distance < minDistance && module.exports.validLockedCrateMonuments.includes(monument.token)) {
                 minDistance = distance;
@@ -413,9 +412,9 @@ module.exports = {
     },
 
     isCrateOnCargoShip: function (x, y, mapMarkers) {
-        for (let marker of mapMarkers.response.mapMarkers.markers) {
+        for (let marker of mapMarkers.markers) {
             if (marker.type === RustPlusTypes.MarkerType.CargoShip) {
-                if (Map.getDistance(x, y, marker.x, marker.y) <= LOCKED_CRATE_CARGO_SHIP_RADIUS) {
+                if (Map.getDistance(x, y, marker.x, marker.y) <= Constants.LOCKED_CRATE_CARGO_SHIP_RADIUS) {
                     return true;
                 }
             }
@@ -424,9 +423,9 @@ module.exports = {
     },
 
     getCargoShipId: function (x, y, mapMarkers) {
-        for (let marker of mapMarkers.response.mapMarkers.markers) {
+        for (let marker of mapMarkers.markers) {
             if (marker.type === RustPlusTypes.MarkerType.CargoShip) {
-                if (Map.getDistance(x, y, marker.x, marker.y) <= LOCKED_CRATE_CARGO_SHIP_RADIUS) {
+                if (Map.getDistance(x, y, marker.x, marker.y) <= Constants.LOCKED_CRATE_CARGO_SHIP_RADIUS) {
                     return marker.id;
                 }
             }
@@ -439,6 +438,6 @@ module.exports = {
         args[0].sendEvent(
             args[0].notificationSettings.lockedCrateMonumentDespawnWarning,
             `Locked Crate at ${args[1]} despawns in ` +
-            `${Constants.LOCKED_CRATE_DESPAWN_WARNING_TIME_MS / (60 * 1000)} minutes.`);
+            `${Constants.DEFAULT_LOCKED_CRATE_DESPAWN_WARNING_TIME_MS / (60 * 1000)} minutes.`);
     },
 }

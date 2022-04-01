@@ -86,7 +86,7 @@ module.exports = {
         }
 
         if (instance.serverList.hasOwnProperty(`${rustplus.server}-${rustplus.port}`)) {
-            if (instance.serverList[server].active) {
+            if (instance.serverList[server].active && !rustplus.refusedConnectionRetry) {
                 if (rustplus.connected || rustplus.firstTime) {
                     let channelIdActivity = instance.channelId.activity;
                     let channel = DiscordTools.getTextChannelById(rustplus.guildId, channelIdActivity);
@@ -104,17 +104,7 @@ module.exports = {
                         });
                     }
 
-                    let row = DiscordTools.getServerButtonsRow(server, 2, instance.serverList[server].url);
-                    let channelIdServers = instance.channelId.servers;
-                    let messageId = instance.serverList[server].messageId;
-                    let message = undefined;
-                    if (messageId !== null) {
-                        message = await DiscordTools.getMessageById(rustplus.guildId, channelIdServers, messageId);
-                    }
-
-                    if (message !== undefined) {
-                        await message.edit({ components: [row] });
-                    }
+                    await DiscordTools.sendServerMessage(rustplus.guildId, server, 2, false, true);
 
                     rustplus.firstTime = false;
                     rustplus.connected = false;

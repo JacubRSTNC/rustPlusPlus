@@ -82,7 +82,7 @@ class Player {
 
     updatePos() {
         if (this.isAlive || this.isOnline) {
-            this.pos = Map.getPos(this.x, this.y, this.rustplus.mapSize);
+            this.pos = Map.getPos(this.x, this.y, this.rustplus.info.mapSize);
         }
         else {
             this.pos = null;
@@ -104,12 +104,8 @@ class Player {
     }
     getDeathTime(ignore = '') { return (Time.secondsToFullScale(this.getDeathSeconds(), ignore)); }
 
-    assignLeader() {
-        return this.rustplus.sendRequestAsync({
-            promoteToLeader: { steamId: this.steamId }
-        }, 2000).catch((error) => {
-            this.rustplus.log('ERROR', JSON.stringify(error), 'error');
-        });
+    async assignLeader() {
+        return await this.rustplus.promoteToLeaderAsync(this.steamId);
     }
 }
 

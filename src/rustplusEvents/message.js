@@ -1,15 +1,12 @@
 const CommandHandler = require('../handlers/inGameCommandHandler.js');
 const TeamChatHandler = require("../handlers/teamChatHandler.js");
 const DiscordTools = require('../discordTools/discordTools.js');
-const { MessageAttachment } = require('discord.js');
 const TeamHandler = require('../handlers/teamHandler.js');
 
 module.exports = {
     name: 'message',
     async execute(rustplus, client, message) {
-        if (rustplus.debug) {
-            rustplus.log('MESSAGE', `MESSAGE RECEIVED:\n${JSON.stringify(message)}`);
-        }
+        /* rustplus.log('MESSAGE', 'MESSAGE RECEIVED'); */
 
         if (message.hasOwnProperty('response')) {
 
@@ -39,18 +36,10 @@ module.exports = {
                 }
                 else {
                     let active = message.broadcast.entityChanged.payload.value;
-                    let prefix = rustplus.generalSettings.prefix;
                     instance.switches[id].active = active;
                     client.writeInstanceFile(rustplus.guildId, instance);
 
-                    let file = new MessageAttachment(`src/images/electrics/${instance.switches[id].image}`);
-                    let embed = DiscordTools.getSwitchEmbed(id, instance.switches[id], prefix);
-                    let selectMenu = DiscordTools.getSwitchSelectMenu(id, instance.switches[id]);
-                    let buttonRow = DiscordTools.getSwitchButtonsRow(id, instance.switches[id]);
-
-                    await client.switchesMessages[rustplus.guildId][id].edit({
-                        embeds: [embed], components: [selectMenu, buttonRow], files: [file]
-                    });
+                    DiscordTools.sendSmartSwitchMessage(rustplus.guildId, id, true, true, false);
                 }
             }
         }

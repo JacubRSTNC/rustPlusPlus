@@ -1,12 +1,10 @@
-const Constants = require('../util/eventConstants.js');
+const Constants = require('../util/constants.js');
 const Map = require('../util/map.js');
 const RustPlusTypes = require('../util/rustplusTypes.js');
 const Timer = require('../util/timer');
 
-const OIL_RIG_CHINOOK_47_MAX_DISTANCE = 550;
-
 module.exports = {
-    handler: function (rustplus, client, info, mapMarkers, teamInfo, time) {
+    handler: function (rustplus, mapMarkers) {
         /* Check if a Chinook 47 have been detected near any of the oil rigs */
         module.exports.checkNewChinook47Detected(rustplus, mapMarkers);
 
@@ -15,7 +13,7 @@ module.exports = {
     },
 
     checkNewChinook47Detected: function (rustplus, mapMarkers) {
-        for (let marker of mapMarkers.response.mapMarkers.markers) {
+        for (let marker of mapMarkers.markers) {
             if (marker.type === RustPlusTypes.MarkerType.Chinook47) {
                 let mapSize = rustplus.info.correctedMapSize;
                 let pos = Map.getPos(marker.x, marker.y, mapSize);
@@ -29,7 +27,7 @@ module.exports = {
                     };
 
                     let smallOil = [], largeOil = [];
-                    for (let monument of rustplus.mapMonuments) {
+                    for (let monument of rustplus.map.monuments) {
                         if (monument.token === 'oil_rig_small') {
                             smallOil.push({ x: monument.x, y: monument.y })
                         }
@@ -41,7 +39,7 @@ module.exports = {
                     let found = false;
                     for (let rig of smallOil) {
                         if (Map.getDistance(marker.x, marker.y, rig.x, rig.y) <=
-                            OIL_RIG_CHINOOK_47_MAX_DISTANCE) {
+                            Constants.OIL_RIG_CHINOOK_47_MAX_SPAWN_DISTANCE) {
                             found = true;
                             let oilRigLocation = Map.getPos(rig.x, rig.y, mapSize);
                             rustplus.activeChinook47s[marker.id].type = 'smallOil';
@@ -57,7 +55,7 @@ module.exports = {
                             if (lockedCrateId !== null) {
                                 rustplus.lockedCrateSmallOilRigTimers[lockedCrateId] = new Timer.timer(
                                     module.exports.notifyLockedCrateSmallOpen,
-                                    Constants.OIL_RIG_LOCKED_CRATE_UNLOCK_TIME_MS,
+                                    Constants.DEFAULT_OIL_RIG_LOCKED_CRATE_UNLOCK_TIME_MS,
                                     rustplus,
                                     oilRigLocation,
                                     lockedCrateId);
@@ -75,7 +73,7 @@ module.exports = {
 
                     for (let rig of largeOil) {
                         if (Map.getDistance(marker.x, marker.y, rig.x, rig.y) <=
-                            OIL_RIG_CHINOOK_47_MAX_DISTANCE) {
+                            Constants.OIL_RIG_CHINOOK_47_MAX_SPAWN_DISTANCE) {
                             found = true;
                             let oilRigLocation = Map.getPos(rig.x, rig.y, mapSize);
                             rustplus.activeChinook47s[marker.id].type = 'largeOil';
@@ -91,7 +89,7 @@ module.exports = {
                             if (lockedCrateId !== null) {
                                 rustplus.lockedCrateLargeOilRigTimers[lockedCrateId] = new Timer.timer(
                                     module.exports.notifyLockedCrateLargeOpen,
-                                    Constants.OIL_RIG_LOCKED_CRATE_UNLOCK_TIME_MS,
+                                    Constants.DEFAULT_OIL_RIG_LOCKED_CRATE_UNLOCK_TIME_MS,
                                     rustplus,
                                     oilRigLocation,
                                     lockedCrateId);
@@ -134,7 +132,7 @@ module.exports = {
     },
 
     getOilRigLockedCrateId: function (x, y, mapMarkers) {
-        for (let marker of mapMarkers.response.mapMarkers.markers) {
+        for (let marker of mapMarkers.markers) {
             if (marker.type === RustPlusTypes.MarkerType.LockedCrate) {
                 if (Map.getDistance(x, y, marker.x, marker.y) < 100) {
                     return marker.id;
@@ -149,7 +147,7 @@ module.exports = {
         let newActiveChinook47Object = new Object();
         for (const [id, content] of Object.entries(rustplus.activeChinook47s)) {
             let active = false;
-            for (let marker of mapMarkers.response.mapMarkers.markers) {
+            for (let marker of mapMarkers.markers) {
                 if (marker.type === RustPlusTypes.MarkerType.Chinook47) {
                     if (marker.id === parseInt(id)) {
                         /* Chinook 47 marker is still visable on the map */
