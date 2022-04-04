@@ -1,13 +1,18 @@
+const { MessageActionRow, MessageButton, MessageEmbed, MessageAttachment } = require('discord.js');
 const { listen } = require('push-receiver');
 const DiscordTools = require('../discordTools/discordTools.js');
 const Constants = require('../util/constants.js');
+const Scrape = require('../util/scrape.js');
 
 module.exports = async (client, guild) => {
     let credentials = client.readCredentialsFile(guild.id);
 
     if (credentials.credentials === null) {
+        client.log('Credentials is not set, cannot start fcm-listener.');
         return;
     }
+
+    const ownerId = credentials.credentials.owner;
 
     /* Destroy previous instance of fcm listener */
     if (client.currentFcmListeners[guild.id]) {
@@ -79,7 +84,7 @@ module.exports = async (client, guild) => {
                     switch (body.type) {
                         case 'death': {
                             client.log('FCM', `${guild.id} player: death`);
-                            playerDeath(client, guild, full, data, body);
+                            playerDeath(client, guild, full, data, body, ownerId);
                         } break;
 
                         default: {
@@ -197,7 +202,41 @@ async function pairingEntitySwitch(client, guild, full, data, body) {
 }
 
 async function pairingEntitySmartAlarm(client, guild, full, data, body) {
+    let instance = client.readInstanceFile(guild.id);
+    let id = body.entityId;
 
+    if (instance.alarms.hasOwnProperty(id)) {
+        return;
+    }
+
+    instance.alarms[id] = {
+        active: false,
+        everyone: false,
+        name: 'Smart Alarm',
+        message: 'Your base is under attack!',
+        id: id,
+        image: 'smart_alarm.png',
+        server: body.name,
+        ipPort: `${body.ip}-${body.port}`,
+        messageId: null
+    };
+    client.writeInstanceFile(guild.id, instance);
+
+    let rustplus = client.rustplusInstances[guild.id];
+    if (!rustplus) return;
+
+    let serverId = `${rustplus.server}-${rustplus.port}`;
+
+    if (`${body.ip}-${body.port}` === serverId) {
+        let info = await rustplus.getEntityInfoAsync(id);
+        if (info.error) return;
+
+        let active = info.entityInfo.payload.value;
+        instance.alarms[id].active = active;
+        client.writeInstanceFile(guild.id, instance);
+    }
+
+    await DiscordTools.sendSmartAlarmMessage(guild.id, id);
 }
 
 async function pairingEntityStorageMonitor(client, guild, full, data, body) {
@@ -205,17 +244,133 @@ async function pairingEntityStorageMonitor(client, guild, full, data, body) {
 }
 
 async function alarmAlarm(client, guild, full, data, body) {
+    /* Unfortunately the alarm notification from the fcm listener is unreliable. The notification does not include
+    which entityId that got triggered which makes it impossible to know which Smart Alarms are still being used
+    actively. Also, from testing it seems that notifications don't always reach this fcm listener which makes it even
+    more unreliable. The only advantage to using the fcm listener alarm notification is that it includes the title and
+    description messagethat is configured on the Smart Alarm in the game. Due to missing out on this data, Smart Alarm
+    title and description message needs to be re-configured via the /alarm slash command. Alarms that are used on the
+    connected rust server will be handled through the message event from rustplus. Smart Alarms that are still attached
+    to the credential owner and which is not part of the currently connected rust server can notify IF the general
+    setting fcmAlarmNotificationEnabled is enabled. Those notifications will be handled here. */
 
+    let instance = client.readInstanceFile(guild.id);
+    let rustplus = client.rustplusInstances[guild.id];
+    let alarmServerId = `${body.ip}-${body.port}`;
+
+    if (!rustplus || (rustplus && (alarmServerId !== `${rustplus.server}-${rustplus.port}`))) {
+        if (instance.generalSettings.fcmAlarmNotificationEnabled) {
+            let content = {};
+            content.embeds = [
+                new MessageEmbed()
+                    .setColor('#ce412b')
+                    .setThumbnail('attachment://smart_alarm.png')
+                    .setTitle((data.title !== '') ? data.title : 'Smart Alarm')
+                    .addFields(
+                        {
+                            name: 'Message',
+                            value: (data.message !== '') ? `\`${data.message}\`` : 'Your base is under attack!',
+                            inline: true
+                        }
+                    )
+                    .setFooter({
+                        text: body.name
+                    })
+                    .setTimestamp()];
+
+            content.files = [
+                new MessageAttachment('src/resources/images/electrics/smart_alarm.png')];
+
+            if (instance.generalSettings.fcmAlarmNotificationEveryone) {
+                content.content = '@everyone';
+            }
+
+            let channel = DiscordTools.getTextChannelById(rustplus.guildId, instance.channelId.activity);
+            if (channel) {
+                await channel.send(content);
+            }
+        }
+    }
 }
 
-async function playerDeath(client, guild, full, data, body) {
+async function playerDeath(client, guild, full, data, body, ownerId) {
+    let member = await DiscordTools.getMemberById(guild.id, ownerId);
 
+    if (member !== undefined) {
+        let png = null;
+        if (body.targetId !== '') {
+            png = await Scrape.scrapeSteamProfilePicture(client, body.targetId);
+        }
+        else {
+            png = (isValidUrl(body.img)) ? body.img : Constants.DEFAULT_SERVER_IMG;
+        }
+
+        let embed = new MessageEmbed()
+            .setColor('#ff0040')
+            .setThumbnail(png)
+            .setTitle(data.title)
+            .setTimestamp()
+            .setFooter({
+                text: body.name
+            });
+
+        if (body.targetId !== '') {
+            embed.setURL(`${Constants.STEAM_PROFILES_URL}${body.targetId}`)
+        }
+
+        await member.send({ embeds: [embed] });
+    }
 }
 
 async function teamLogin(client, guild, full, data, body) {
+    let instance = client.readInstanceFile(guild.id);
+    let channelId = instance.channelId.activity;
+    let channel = DiscordTools.getTextChannelById(guild.id, channelId);
+    let rustplus = client.rustplusInstances[guild.id];
+    let loginServerId = `${body.ip}-${body.port}`;
 
+    if (!rustplus || (rustplus && (`${rustplus.server}-${rustplus.port}` !== loginServerId))) {
+        if (channel !== undefined) {
+            let png = await Scrape.scrapeSteamProfilePicture(client, body.targetId);
+            await channel.send({
+                embeds: [new MessageEmbed()
+                    .setColor('#00ff40')
+                    .setAuthor({
+                        name: `${body.targetName} just connected.`,
+                        iconURL: (png !== '') ? png : Constants.DEFAULT_SERVER_IMG,
+                        url: `${Constants.STEAM_PROFILES_URL}${body.targetId}`
+                    })
+                    .setTimestamp()
+                    .setFooter({
+                        text: body.name
+                    })
+                ]
+            });
+        }
+    }
 }
 
 async function newsNews(client, guild, full, data, body) {
+    let instance = client.readInstanceFile(guild.id);
+    let channelId = instance.channelIdactivity;
+    let channel = DiscordTools.getTextChannelById(guild.id, channelId);
 
+    if (channel !== undefined) {
+        await channel.send({
+            embeds: [new MessageEmbed()
+                .setTitle(`NEWS: ${data.title}`)
+                .setColor('#ce412b')
+                .setDescription(`${data.message}`)
+                .setThumbnail(Constants.DEFAULT_SERVER_IMG)
+            ],
+            components: [new MessageActionRow()
+                .addComponents(
+                    new MessageButton()
+                        .setStyle('LINK')
+                        .setLabel('LINK')
+                        .setURL(isValidUrl(body.url) ? body.url : Constants.DEFAULT_SERVER_URL))
+            ]
+        });
+
+    }
 }
