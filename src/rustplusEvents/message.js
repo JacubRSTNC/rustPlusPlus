@@ -47,15 +47,18 @@ module.exports = {
                     client.writeInstanceFile(rustplus.guildId, instance);
 
                     if (active) {
+                        let title = instance.alarms[id].name;
+                        let message = instance.alarms[id].message;
+
                         let content = {};
                         content.embeds = [
                             new MessageEmbed()
                                 .setColor('#ce412b')
                                 .setThumbnail(`attachment://${instance.alarms[id].image}`)
-                                .setTitle(instance.alarms[id].name)
+                                .setTitle(title)
                                 .addFields(
                                     { name: 'ID', value: `\`${id}\``, inline: true },
-                                    { name: 'Message', value: `\`${instance.alarms[id].message}\``, inline: true }
+                                    { name: 'Message', value: `\`${message}\``, inline: true }
                                 )
                                 .setFooter({
                                     text: instance.alarms[id].server
@@ -73,9 +76,58 @@ module.exports = {
                         if (channel) {
                             await channel.send(content);
                         }
+
+                        if (instance.generalSettings.smartAlarmNotifyInGame) {
+                            rustplus.sendTeamMessageAsync(`${title}: ${message}`, !rustplus.generalSettings.showTrademark);
+                        }
                     }
 
                     DiscordTools.sendSmartAlarmMessage(rustplus.guildId, id, true, false, false);
+                }
+                else if (instance.storageMonitors.hasOwnProperty(id)) {
+                    if (message.broadcast.entityChanged.payload.value === true) return;
+
+                    if (instance.storageMonitors[id].type === 'toolcupboard') {
+                        setTimeout(async () => {
+                            let info = await rustplus.getEntityInfoAsync(id);
+                            if (info.error) return;
+
+                            rustplus.storageMonitors[id] = {
+                                items: info.entityInfo.payload.items,
+                                expiry: info.entityInfo.payload.protectionExpiry
+                            }
+
+                            let instance = client.readInstanceFile(rustplus.guildId);
+                            if (info.entityInfo.payload.protectionExpiry === 0 &&
+                                instance.storageMonitors[id].decaying === false) {
+                                instance.storageMonitors[id].decaying = true;
+                                client.writeInstanceFile(rustplus.guildId, instance);
+
+                                await DiscordTools.sendDecayingNotification(rustplus.guildId, id);
+
+                                if (instance.storageMonitors[id].inGame) {
+                                    rustplus.sendTeamMessageAsync(
+                                        `${instance.storageMonitors[id].name} is decaying!`,
+                                        !rustplus.generalSettings.showTrademark);
+                                }
+                            }
+                            else if (info.entityInfo.payload.protectionExpiry !== 0) {
+                                instance.storageMonitors[id].decaying = false;
+                                client.writeInstanceFile(rustplus.guildId, instance);
+                            }
+
+                            await DiscordTools.sendStorageMonitorMessage(rustplus.guildId, id, true, false, false);
+
+                        }, 2000);
+                    }
+                    else {
+                        rustplus.storageMonitors[id] = {
+                            items: message.broadcast.entityChanged.payload.items,
+                            expiry: message.broadcast.entityChanged.payload.protectionExpiry
+                        }
+
+                        await DiscordTools.sendStorageMonitorMessage(rustplus.guildId, id, true, false, false);
+                    }
                 }
             }
         }
