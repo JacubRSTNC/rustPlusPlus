@@ -34,16 +34,15 @@ class RustPlus extends RP {
         this.items = new Items();
 
         this.trademarkString = 'rustPlusPlus | ';
-        this.messageIgnoreCounter = 0;
 
         this.oldsendTeamMessageAsync = this.sendTeamMessageAsync;
-        this.sendTeamMessageAsync = async function (message, ignoreForward = false) {
+        this.sendTeamMessageAsync = async function (message) {
             let trademark = (this.generalSettings.showTrademark) ? this.trademarkString : '';
             let messageMaxLength = Constants.MAX_LENGTH_TEAM_MESSAGE - trademark.length;
             let strings = message.match(new RegExp(`.{1,${messageMaxLength}}(\\s|$)`, 'g'));
 
-            if (ignoreForward) {
-                this.messageIgnoreCounter = strings.length;
+            if (this.team.allOffline) {
+                return;
             }
 
             for (let msg of strings) {
@@ -93,6 +92,8 @@ class RustPlus extends RP {
 
         this.informationIntervalCounter = 0;
         this.storageMonitorIntervalCounter = 0;
+        this.smartSwitchIntervalCounter = 15;
+        this.smartAlarmIntervalCounter = 0;
 
         this.interactionSwitches = [];
 
@@ -142,9 +143,9 @@ class RustPlus extends RP {
         this.logger.log(title, text, level);
     }
 
-    async printCommandOutput(rustplus, str, type = 'COMMAND') {
-        await rustplus.sendTeamMessageAsync(str, !rustplus.generalSettings.showTrademark);
-        rustplus.log(type, str);
+    async printCommandOutput(str, type = 'COMMAND') {
+        await this.sendTeamMessageAsync(str);
+        this.log(type, str);
     }
 
     async sendEvent(setting, text, firstPoll = false, image = null) {
@@ -154,7 +155,7 @@ class RustPlus extends RP {
             this.sendDiscordEvent(text, img)
         }
         if (!firstPoll && setting.inGame) {
-            await this.sendTeamMessageAsync(`${text}`, !this.generalSettings.showTrademark);
+            await this.sendTeamMessageAsync(`${text}`);
         }
         this.log('EVENT', text);
     }

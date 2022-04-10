@@ -3,6 +3,7 @@ const Str = require('../util/string.js');
 const DiscordTools = require('../discordTools/discordTools.js');
 const Map = require('../util/map.js');
 const Constants = require('../util/constants.js');
+const TeamHandler = require('../handlers/teamHandler.js');
 
 module.exports = {
     inGameCommandHandler: async function (rustplus, client, message) {
@@ -44,6 +45,9 @@ module.exports = {
         else if (command === `${rustplus.generalSettings.prefix}mute`) {
             module.exports.commandMute(rustplus, client);
         }
+        else if (command.startsWith(`${rustplus.generalSettings.prefix}note`)) {
+            module.exports.commandNote(rustplus, client, message)
+        }
         else if (command === `${rustplus.generalSettings.prefix}offline`) {
             module.exports.commandOffline(rustplus);
         }
@@ -52,6 +56,9 @@ module.exports = {
         }
         else if (command === `${rustplus.generalSettings.prefix}pop`) {
             module.exports.commandPop(rustplus);
+        }
+        else if (command.startsWith(`${rustplus.generalSettings.prefix}prox`)) {
+            module.exports.commandProx(rustplus, client, message);
         }
         else if (command === `${rustplus.generalSettings.prefix}small`) {
             module.exports.commandSmall(rustplus);
@@ -95,18 +102,45 @@ module.exports = {
                             return true;
                         }
                     }
+                    else if (command === `${cmd} status`) {
+                        let info = await rustplus.getEntityInfoAsync(id);
+                        if (!(await rustplus.isResponseValid(info))) return false;
+
+                        active = (info.entityInfo.payload.value) ? 'ON' : 'OFF';
+                        rustplus.printCommandOutput(`${instance.switches[id].name} is currently ${active}.`);
+                        return true;
+                    }
                     else {
+                        return false;
+                    }
+
+                    let response = null;
+                    if (active) {
+                        response = await rustplus.turnSmartSwitchOnAsync(id);
+                    }
+                    else {
+                        response = await rustplus.turnSmartSwitchOffAsync(id);
+                    }
+
+                    if (!(await rustplus.isResponseValid(response))) {
+                        rustplus.printCommandOutput(`Could not communicate with Smart Switch: ${content.name}`);
+                        await DiscordTools.sendSmartSwitchNotFound(rustplus.guildId, id);
+
+                        delete instance.switches[id];
+                        client.writeInstanceFile(rustplus.guildId, instance);
+
+                        await client.switchesMessages[rustplus.guildId][id].delete();
+                        delete client.switchesMessages[rustplus.guildId][id];
                         return false;
                     }
 
                     instance.switches[id].active = active;
                     client.writeInstanceFile(rustplus.guildId, instance);
 
-                    rustplus.turnSmartSwitchAsync(id, active);
                     DiscordTools.sendSmartSwitchMessage(rustplus.guildId, id, true, true, false);
                     let str = `${instance.switches[id].name} was turned `;
                     str += (active) ? 'on.' : 'off.';
-                    rustplus.sendTeamMessageAsync(str);
+                    rustplus.printCommandOutput(str);
 
                     rustplus.interactionSwitches[id] = active;
 
@@ -131,13 +165,13 @@ module.exports = {
         }
 
         str = (str !== '') ? str.slice(0, -2) : 'No one is AFK.';
-        rustplus.printCommandOutput(rustplus, str);
+        rustplus.printCommandOutput(str);
     },
 
     commandAlive: function (rustplus) {
         let player = rustplus.team.getPlayerLongestAlive();
         let time = player.getAliveTime();
-        rustplus.printCommandOutput(rustplus, `${player.name} has been alive the longest (${time})`);
+        rustplus.printCommandOutput(`${player.name} has been alive the longest (${time})`);
     },
 
     commandBradley: function (rustplus) {
@@ -165,7 +199,7 @@ module.exports = {
         }
 
         for (let str of strings) {
-            rustplus.printCommandOutput(rustplus, str);
+            rustplus.printCommandOutput(str);
         }
     },
 
@@ -203,7 +237,7 @@ module.exports = {
         }
 
         for (let str of strings) {
-            rustplus.printCommandOutput(rustplus, str);
+            rustplus.printCommandOutput(str);
         }
     },
 
@@ -230,7 +264,7 @@ module.exports = {
         }
 
         for (let str of strings) {
-            rustplus.printCommandOutput(rustplus, str);
+            rustplus.printCommandOutput(str);
         }
     },
 
@@ -258,7 +292,7 @@ module.exports = {
         }
 
         for (let str of strings) {
-            rustplus.printCommandOutput(rustplus, str);
+            rustplus.printCommandOutput(str);
         }
     },
 
@@ -294,7 +328,7 @@ module.exports = {
         }
 
         for (let str of strings) {
-            rustplus.printCommandOutput(rustplus, str);
+            rustplus.printCommandOutput(str);
         }
     },
 
@@ -324,33 +358,74 @@ module.exports = {
         }
 
         for (let str of strings) {
-            rustplus.printCommandOutput(rustplus, str);
+            rustplus.printCommandOutput(str);
         }
     },
 
     commandLeader: async function (rustplus, message) {
         let command = message.broadcast.teamMessage.message.message;
         let callerId = message.broadcast.teamMessage.message.steamId.toString();
+        let str = 'Team leadership was transferred to ';
+
+        if (rustplus.team.leaderSteamId !== rustplus.playerId) {
+            let player = rustplus.team.getPlayer(rustplus.playerId);
+            rustplus.printCommandOutput(`Leader command only works if the current leader is ${player.name}.`);
+            return;
+        }
 
         if (command === `${rustplus.generalSettings.prefix}leader`) {
-            await rustplus.team.changeLeadership(callerId);
+            if (rustplus.team.leaderSteamId !== callerId) {
+                await rustplus.team.changeLeadership(callerId);
+                let player = rustplus.team.getPlayer(callerId);
+                str += `${player.name}.`;
+                rustplus.printCommandOutput(str);
+                return;
+            }
+            else {
+                rustplus.printCommandOutput('You are already leader.');
+                return;
+            }
         }
         else {
             let name = command.replace(`${rustplus.generalSettings.prefix}leader `, '');
 
+            let matchedPlayer = null;
             /* Look if the value provided is a steamId */
             for (let player of rustplus.team.players) {
                 if (name === player.steamId) {
-                    await rustplus.team.changeLeadership(player.steamId);
-                    return;
+                    matchedPlayer = player;
                 }
             }
 
-            /* Find the closest name */
-            for (let player of rustplus.team.players) {
-                if (Str.similarity(name, player.name) >= 0.9) {
-                    await rustplus.team.changeLeadership(player.steamId);
-                    return;
+            if (matchedPlayer === null) {
+                /* Look for parts of the name */
+                for (let player of rustplus.team.players) {
+                    if (player.name.toLowerCase().includes(name.toLowerCase())) {
+                        matchedPlayer = player;
+                    }
+                }
+            }
+
+            if (matchedPlayer === null) {
+                /* Find the closest name */
+                for (let player of rustplus.team.players) {
+                    if (Str.similarity(name, player.name) >= 0.9) {
+                        matchedPlayer = player;
+                    }
+                }
+            }
+
+            if (matchedPlayer === null) {
+                rustplus.printCommandOutput(`Could not identify team member: ${name}.`);
+            }
+            else {
+                if (rustplus.team.leaderSteamId === matchedPlayer.steamId) {
+                    rustplus.printCommandOutput(`${matchedPlayer.name} is already leader.`);
+                }
+                else {
+                    await rustplus.team.changeLeadership(matchedPlayer.steamId);
+                    str += `${matchedPlayer.name}.`;
+                    rustplus.printCommandOutput(str);
                 }
             }
         }
@@ -372,7 +447,7 @@ module.exports = {
         switch (subcommand) {
             case 'add': {
                 let teamInfo = await rustplus.getTeamInfoAsync();
-                if (teamInfo.error) return;
+                if (!(await rustplus.isResponseValid(teamInfo))) return;
 
                 let instance = client.readInstanceFile(rustplus.guildId);
 
@@ -389,7 +464,7 @@ module.exports = {
                 rustplus.markers[command] = callerLocation;
 
                 let str = `Marker '${command}' was added.`;
-                rustplus.printCommandOutput(rustplus, str);
+                rustplus.printCommandOutput(str);
             } break;
 
             case 'remove': {
@@ -401,7 +476,7 @@ module.exports = {
                     client.writeInstanceFile(rustplus.guildId, instance);
 
                     let str = `Marker '${command}' was removed.`;
-                    rustplus.printCommandOutput(rustplus, str);
+                    rustplus.printCommandOutput(str);
                 }
             } break;
 
@@ -418,7 +493,7 @@ module.exports = {
                     str = 'No markers.';
                 }
 
-                rustplus.printCommandOutput(rustplus, str);
+                rustplus.printCommandOutput(str);
             } break;
 
             default: {
@@ -427,7 +502,7 @@ module.exports = {
                 }
 
                 let teamInfo = await rustplus.getTeamInfoAsync();
-                if (teamInfo.error) return;
+                if (!(await rustplus.isResponseValid(teamInfo))) return;
 
                 let callerLocation = null;
                 let callerName = null;
@@ -447,18 +522,70 @@ module.exports = {
                     rustplus.markers[subcommand].x, rustplus.markers[subcommand].y));
 
                 let str = `Marker '${subcommand}' is ${distance}m from ${callerName} in direction ${direction}°.`;
-                rustplus.printCommandOutput(rustplus, str);
+                rustplus.printCommandOutput(str);
             } break;
         }
     },
 
     commandMute: function (rustplus, client) {
         let str = `In-Game bot messages muted.`;
-        rustplus.printCommandOutput(rustplus, str);
+        rustplus.printCommandOutput(str);
 
         let instance = client.readInstanceFile(rustplus.guildId);
         rustplus.generalSettings.muteInGameBotMessages = true;
         instance.generalSettings.muteInGameBotMessages = true;
+        client.writeInstanceFile(rustplus.guildId, instance);
+    },
+
+    commandNote: function (rustplus, client, message) {
+        let command = message.broadcast.teamMessage.message.message;
+        let instance = client.readInstanceFile(rustplus.guildId);
+        let serverId = `${rustplus.server}-${rustplus.port}`;
+
+        if (!instance.serverList[serverId].hasOwnProperty('notes')) {
+            instance.serverList[serverId].notes = {};
+        }
+
+        if (command === `${rustplus.generalSettings.prefix}notes`) {
+            if (Object.keys(instance.serverList[serverId].notes).length === 0) {
+                rustplus.printCommandOutput('There are no saved notes.');
+            }
+            else {
+                rustplus.printCommandOutput('Notes:');
+            }
+            for (const [id, note] of Object.entries(instance.serverList[serverId].notes)) {
+                let str = `${id}: ${note}`;
+                rustplus.printCommandOutput(str);
+            }
+        }
+        else if (command.startsWith(`${rustplus.generalSettings.prefix}note remove`)) {
+            let id = parseInt(command.replace(`${rustplus.generalSettings.prefix}note remove`, '').trim());
+
+            if (!isNaN(id)) {
+                if (!Object.keys(instance.serverList[serverId].notes).map(Number).includes(id)) {
+                    rustplus.printCommandOutput('Note ID does not exist.');
+                    return;
+                }
+
+                delete instance.serverList[serverId].notes[id];
+                rustplus.printCommandOutput(`Note with ID: ${id} was removed.`);
+                client.writeInstanceFile(rustplus.guildId, instance);
+                return;
+            }
+        }
+
+        if (command.startsWith(`${rustplus.generalSettings.prefix}note `)) {
+            let note = command.replace(`${rustplus.generalSettings.prefix}note `, '').trim();
+
+            index = 0;
+            while (Object.keys(instance.serverList[serverId].notes).map(Number).includes(index)) {
+                index += 1;
+            }
+
+            instance.serverList[serverId].notes[index] = `${note}`;
+            rustplus.printCommandOutput('Note saved.');
+        }
+
         client.writeInstanceFile(rustplus.guildId, instance);
     },
 
@@ -471,7 +598,7 @@ module.exports = {
         }
 
         str = (str !== '') ? str.slice(0, -2) : 'No one is offline.';
-        rustplus.printCommandOutput(rustplus, str);
+        rustplus.printCommandOutput(str);
     },
 
     commandOnline: function (rustplus) {
@@ -483,7 +610,7 @@ module.exports = {
         }
 
         str = str.slice(0, -2);
-        rustplus.printCommandOutput(rustplus, str);
+        rustplus.printCommandOutput(str);
     },
 
     commandPop: function (rustplus) {
@@ -491,7 +618,97 @@ module.exports = {
         if (rustplus.info.queuedPlayers !== 0) {
             str += ` and ${rustplus.info.queuedPlayers} players in queue.`;
         }
-        rustplus.printCommandOutput(rustplus, str);
+        rustplus.printCommandOutput(str);
+    },
+
+    commandProx: async function (rustplus, client, message) {
+        let callerId = message.broadcast.teamMessage.message.steamId.toString();
+        let caller = rustplus.team.getPlayer(callerId);
+        let command = message.broadcast.teamMessage.message.message;
+
+        if (command === `${rustplus.generalSettings.prefix}prox`) {
+            let teamInfo = await rustplus.getTeamInfoAsync();
+            if (!(await rustplus.isResponseValid(teamInfo))) return;
+            TeamHandler.handler(rustplus, client, teamInfo.teamInfo);
+            rustplus.team.updateTeam(teamInfo.teamInfo);
+
+            let topClosestPlayers = [];
+            let players = [...rustplus.team.players].filter(e => e.steamId !== callerId);
+
+            if (players.length === 0) {
+                rustplus.printCommandOutput('You are the only one in the team.');
+                return;
+            }
+
+            for (let player of players) {
+                if (!player.isAlive) {
+                    players = players.filter(e => e.steamId !== player.steamId);
+                }
+            }
+
+            for (let i = 0; i < 3; i++) {
+                if (players.length > 0) {
+                    let player = players.reduce(function (prev, current) {
+                        if (Map.getDistance(prev.x, prev.y, caller.x, caller.y) <
+                            Map.getDistance(current.x, current.y, caller.x, caller.y)) {
+                            return prev;
+                        }
+                        else {
+                            return current;
+                        }
+                    });
+                    topClosestPlayers.push(player);
+                    players = players.filter(e => e.steamId !== player.steamId);
+                }
+            }
+
+            let str = '';
+            for (let player of topClosestPlayers) {
+                let distance = Math.floor(Map.getDistance(player.x, player.y, caller.x, caller.y));
+                str += `${player.name} (${distance}m), `;
+            }
+
+            if (str === '') {
+                str = 'All your teammates are dead.';
+            }
+            else {
+                str = str.slice(0, -2);
+            }
+
+            rustplus.printCommandOutput(str);
+            return;
+        }
+
+        memberName = command.replace(`${rustplus.generalSettings.prefix}prox`, '').trim();
+
+        let teamInfo = await rustplus.getTeamInfoAsync();
+        if (!(await rustplus.isResponseValid(teamInfo))) return;
+        TeamHandler.handler(rustplus, client, teamInfo.teamInfo);
+        rustplus.team.updateTeam(teamInfo.teamInfo);
+
+        /* Look for parts of the name */
+        for (let player of rustplus.team.players) {
+            if (player.name.toLowerCase().includes(memberName.toLowerCase())) {
+                let distance = Math.floor(Map.getDistance(caller.x, caller.y, player.x, player.y));
+                let direction = Map.getAngleBetweenPoints(caller.x, caller.y, player.x, player.y);
+                let str = `${player.name} is ${distance}m from ${caller.name} in direction ${direction}.`;
+                rustplus.printCommandOutput(str);
+                return;
+            }
+        }
+
+        /* Find the closest name */
+        for (let player of rustplus.team.players) {
+            if (Str.similarity(memberName, player.name) >= 0.9) {
+                let distance = Math.floor(Map.getDistance(caller.x, caller.y, player.x, player.y));
+                let direction = Map.getAngleBetweenPoints(caller.x, caller.y, player.x, player.y);
+                let str = `${player.name} is ${distance}m from ${caller.name} in direction ${direction}.`;
+                rustplus.printCommandOutput(str);
+                return;
+            }
+        }
+
+        rustplus.printCommandOutput(`Could not identify team member: ${memberName}.`);
     },
 
     commandSmall: function (rustplus) {
@@ -520,7 +737,7 @@ module.exports = {
         }
 
         for (let str of strings) {
-            rustplus.printCommandOutput(rustplus, str);
+            rustplus.printCommandOutput(str);
         }
     },
 
@@ -538,7 +755,7 @@ module.exports = {
             }
         }
 
-        rustplus.printCommandOutput(rustplus, str);
+        rustplus.printCommandOutput(str);
     },
 
     commandTimer: function (rustplus, command) {
@@ -576,7 +793,7 @@ module.exports = {
                 rustplus.timers[id] = {
                     timer: new Timer.timer(
                         () => {
-                            rustplus.printCommandOutput(rustplus, `Timer: ${message}`, 'TIMER');
+                            rustplus.printCommandOutput(`Timer: ${message}`, 'TIMER');
                             delete rustplus.timers[id]
                         },
                         timeSeconds * 1000),
@@ -584,7 +801,7 @@ module.exports = {
                 };
                 rustplus.timers[id].timer.start();
 
-                rustplus.printCommandOutput(rustplus, `Timer set for ${time}.`);
+                rustplus.printCommandOutput(`Timer set for ${time}.`);
                 break;
 
             case 'remove':
@@ -600,20 +817,20 @@ module.exports = {
                 rustplus.timers[id].timer.stop();
                 delete rustplus.timers[id];
 
-                rustplus.printCommandOutput(rustplus, `Timer with ID: ${id} was removed`);
+                rustplus.printCommandOutput(`Timer with ID: ${id} was removed`);
                 break;
 
             case 'remain':
                 if (Object.keys(rustplus.timers).length === 0) {
-                    rustplus.printCommandOutput(rustplus, 'No active timers.');
+                    rustplus.printCommandOutput('No active timers.');
                 }
                 else {
-                    rustplus.printCommandOutput(rustplus, 'Active timers:');
+                    rustplus.printCommandOutput('Active timers:');
                 }
                 for (const [id, content] of Object.entries(rustplus.timers)) {
                     let timeLeft = Timer.getTimeLeftOfTimer(content.timer);
                     let str = `- ID: ${parseInt(id)}, Time left: ${timeLeft}, Message: ${content.message}`;
-                    rustplus.printCommandOutput(rustplus, str);
+                    rustplus.printCommandOutput(str);
                 }
                 break;
 
@@ -629,11 +846,11 @@ module.exports = {
         client.writeInstanceFile(rustplus.guildId, instance);
 
         let str = `In-Game chat unmuted.`;
-        rustplus.printCommandOutput(rustplus, str);
+        rustplus.printCommandOutput(str);
     },
 
     commandWipe: function (rustplus) {
         let str = `${rustplus.info.getTimeSinceWipe()} since wipe.`;
-        rustplus.printCommandOutput(rustplus, str);
+        rustplus.printCommandOutput(str);
     },
 };

@@ -562,8 +562,19 @@ module.exports = {
         const isTc = (instance.storageMonitors[id].type === 'toolcupboard');
         const items = rustplus.storageMonitors[id].items;
         const expiry = rustplus.storageMonitors[id].expiry;
+        const capacity = rustplus.storageMonitors[id].capacity;
 
         let description = `**ID** \`${id}\``;
+
+        if (capacity === 0) {
+            return new MessageEmbed()
+                .setTitle(`${instance.storageMonitors[id].name}`)
+                .setColor('#ce412b')
+                .setDescription(`${description}\n**STATUS** \`NOT ELECTRICALLY CONNECTED!\``)
+                .setThumbnail(`attachment://${instance.storageMonitors[id].image}`)
+                .setFooter({ text: `${instance.storageMonitors[id].server}` });
+        }
+
         description += `\n**Type** \`${(isTc) ? 'Tool Cupboard' : 'Container'}\``;
 
         if (isTc) {
@@ -723,7 +734,32 @@ module.exports = {
         }
     },
 
-    sendToolcupboardNotFound: async function (guildId, id) {
+    sendStorageMonitorDisconnectNotification: async function (guildId, id) {
+        const instance = Client.client.readInstanceFile(guildId);
+        let channel = module.exports.getTextChannelById(guildId, instance.channelId.activity);
+        const file = new MessageAttachment(`src/resources/images/electrics/${instance.storageMonitors[id].image}`);
+
+        if (channel) {
+            let content = {};
+            content.embeds = [new MessageEmbed()
+                .setTitle(`${instance.storageMonitors[id].name} is no longer electrically connected!`)
+                .setColor('#ff0040')
+                .setDescription(`**ID** \`${id}\``)
+                .setThumbnail(`attachment://${instance.storageMonitors[id].image}`)
+                .setFooter({ text: `${instance.storageMonitors[id].server}` })
+                .setTimestamp()];
+
+            content.files = [file];
+
+            if (instance.storageMonitors[id].everyone) {
+                content.content = '@everyone';
+            }
+
+            await channel.send(content);
+        }
+    },
+
+    sendStorageMonitorNotFound: async function (guildId, id) {
         const instance = Client.client.readInstanceFile(guildId);
         let channel = module.exports.getTextChannelById(guildId, instance.channelId.activity);
         const file = new MessageAttachment(`src/resources/images/electrics/${instance.storageMonitors[id].image}`);
@@ -743,6 +779,48 @@ module.exports = {
             if (instance.storageMonitors[id].everyone) {
                 content.content = '@everyone';
             }
+
+            await channel.send(content);
+        }
+    },
+
+    sendSmartSwitchNotFound: async function (guildId, id) {
+        const instance = Client.client.readInstanceFile(guildId);
+        let channel = module.exports.getTextChannelById(guildId, instance.channelId.activity);
+        const file = new MessageAttachment(`src/resources/images/electrics/${instance.switches[id].image}`);
+
+        if (channel) {
+            let content = {};
+            content.embeds = [new MessageEmbed()
+                .setTitle(`${instance.switches[id].name} could not be found! Might have been destroyed.`)
+                .setColor('#ff0040')
+                .setDescription(`**ID** \`${id}\``)
+                .setThumbnail(`attachment://${instance.switches[id].image}`)
+                .setFooter({ text: `${instance.switches[id].server}` })
+                .setTimestamp()];
+
+            content.files = [file];
+
+            await channel.send(content);
+        }
+    },
+
+    sendSmartAlarmNotFound: async function (guildId, id) {
+        const instance = Client.client.readInstanceFile(guildId);
+        let channel = module.exports.getTextChannelById(guildId, instance.channelId.activity);
+        const file = new MessageAttachment(`src/resources/images/electrics/${instance.alarms[id].image}`);
+
+        if (channel) {
+            let content = {};
+            content.embeds = [new MessageEmbed()
+                .setTitle(`${instance.alarms[id].name} could not be found! Might have been destroyed.`)
+                .setColor('#ff0040')
+                .setDescription(`**ID** \`${id}\``)
+                .setThumbnail(`attachment://${instance.alarms[id].image}`)
+                .setFooter({ text: `${instance.alarms[id].server}` })
+                .setTimestamp()];
+
+            content.files = [file];
 
             await channel.send(content);
         }

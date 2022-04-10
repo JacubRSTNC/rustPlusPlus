@@ -1,6 +1,16 @@
 module.exports = {
     name: 'interactionCreate',
     async execute(client, interaction) {
+        let instance = client.readInstanceFile(interaction.guildId);
+
+        /* Check so that the interaction comes from valid channels */
+        if (!Object.values(instance.channelId).includes(interaction.channelId) && !interaction.isCommand) {
+            client.log('WARNING', 'Interaction from an invalild channel.')
+            if (interaction.isButton()) {
+                interaction.deferUpdate();
+            }
+        }
+
         if (interaction.isButton()) {
             require('../handlers/buttonHandler')(client, interaction);
         }
@@ -28,7 +38,9 @@ module.exports = {
         }
         else {
             client.log('ERROR', 'Unknown Interaction...', 'error')
-            interaction.deferUpdate();
+            if (interaction.isButton()) {
+                interaction.deferUpdate();
+            }
         }
     },
 };

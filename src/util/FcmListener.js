@@ -159,6 +159,7 @@ async function pairingServer(client, guild, full, data, body) {
         url: isValidUrl(body.url) ? body.url : Constants.DEFAULT_SERVER_URL,
         timeTillDay: null,
         timeTillNight: null,
+        notes: {},
         messageId: (message !== undefined) ? message.id : null
     };
     client.writeInstanceFile(guild.id, instance);
@@ -192,7 +193,7 @@ async function pairingEntitySwitch(client, guild, full, data, body) {
 
     if (`${body.ip}-${body.port}` === serverId) {
         let info = await rustplus.getEntityInfoAsync(id);
-        if (info.error) return;
+        if (!(await rustplus.isResponseValid(info))) return;
 
         let active = info.entityInfo.payload.value;
         instance = client.readInstanceFile(guild.id);
@@ -231,7 +232,7 @@ async function pairingEntitySmartAlarm(client, guild, full, data, body) {
 
     if (`${body.ip}-${body.port}` === serverId) {
         let info = await rustplus.getEntityInfoAsync(id);
-        if (info.error) return;
+        if (!(await rustplus.isResponseValid(info))) return;
 
         let active = info.entityInfo.payload.value;
         instance.alarms[id].active = active;
@@ -269,23 +270,27 @@ async function pairingEntityStorageMonitor(client, guild, full, data, body) {
 
     if (`${body.ip}-${body.port}` === serverId) {
         let info = await rustplus.getEntityInfoAsync(id);
-        if (info.error) return;
+        if (!(await rustplus.isResponseValid(info))) return;
 
-        if (info.entityInfo.payload.capacity === 28) {
-            instance.storageMonitors[id].type = 'toolcupboard';
-            instance.storageMonitors[id].image = 'tool_cupboard.png';
-            if (info.entityInfo.payload.protectionExpiry === 0) {
-                instance.storageMonitors[id].decaying = true;
+        if (info.entityInfo.payload.capacity !== 0) {
+            if (info.entityInfo.payload.capacity === 28) {
+                instance.storageMonitors[id].type = 'toolcupboard';
+                instance.storageMonitors[id].image = 'tool_cupboard.png';
+                if (info.entityInfo.payload.protectionExpiry === 0) {
+                    instance.storageMonitors[id].decaying = true;
+                }
             }
+            else {
+                instance.storageMonitors[id].type = 'container';
+            }
+            client.writeInstanceFile(guild.id, instance);
         }
-        else {
-            instance.storageMonitors[id].type = 'container';
-        }
-        client.writeInstanceFile(guild.id, instance);
 
         rustplus.storageMonitors[id] = {
             items: info.entityInfo.payload.items,
-            expiry: info.entityInfo.payload.protectionExpiry
+            expiry: info.entityInfo.payload.protectionExpiry,
+            capacity: info.entityInfo.payload.capacity,
+            hasProtection: info.entityInfo.payload.hasProtection
         }
 
         await DiscordTools.sendStorageMonitorMessage(guild.id, id);
@@ -343,7 +348,7 @@ async function alarmAlarm(client, guild, full, data, body) {
             }
 
             if (instance.generalSettings.smartAlarmNotifyInGame && rustplus) {
-                rustplus.sendTeamMessageAsync(`${title}: ${message}`, !rustplus.generalSettings.showTrademark);
+                rustplus.sendTeamMessageAsync(`${title}: ${message}`);
             }
         }
     }
@@ -408,7 +413,7 @@ async function teamLogin(client, guild, full, data, body) {
 
 async function newsNews(client, guild, full, data, body) {
     let instance = client.readInstanceFile(guild.id);
-    let channelId = instance.channelIdactivity;
+    let channelId = instance.channelId.activity;
     let channel = DiscordTools.getTextChannelById(guild.id, channelId);
 
     if (channel !== undefined) {

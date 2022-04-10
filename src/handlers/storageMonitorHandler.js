@@ -4,7 +4,7 @@ module.exports = {
     handler: async function (rustplus, client) {
         let server = `${rustplus.server}-${rustplus.port}`;
 
-        if (rustplus.storageMonitorIntervalCounter === 30) {
+        if (rustplus.storageMonitorIntervalCounter === 29) {
             rustplus.storageMonitorIntervalCounter = 0;
         }
         else {
@@ -14,41 +14,58 @@ module.exports = {
 
         let instance = client.readInstanceFile(rustplus.guildId);
         for (const [id, content] of Object.entries(instance.storageMonitors)) {
-            if (content.type === 'toolcupboard' && content.ipPort === server) {
-                instance = client.readInstanceFile(rustplus.guildId);
+            if (server !== content.ipPort) continue;
+            instance = client.readInstanceFile(rustplus.guildId);
 
-                let info = await rustplus.getEntityInfoAsync(id);
-                if (info.error && info.error === 'not_found') {
-                    await DiscordTools.sendToolcupboardNotFound(rustplus.guildId, id);
+            let info = await rustplus.getEntityInfoAsync(id);
+            if (!(await rustplus.isResponseValid(info))) {
+                await DiscordTools.sendStorageMonitorNotFound(rustplus.guildId, id);
 
-                    delete instance.storageMonitors[id];
+                delete instance.storageMonitors[id];
 
-                    await client.storageMonitorsMessages[rustplus.guildId][id].delete();
-                    delete client.storageMonitorsMessages[rustplus.guildId][id];
+                await client.storageMonitorsMessages[rustplus.guildId][id].delete();
+                delete client.storageMonitorsMessages[rustplus.guildId][id];
 
-                    client.writeInstanceFile(rustplus.guildId, instance);
-                    continue;
-                }
-
-                rustplus.storageMonitors[id] = {
-                    items: info.entityInfo.payload.items,
-                    expiry: info.entityInfo.payload.protectionExpiry
-                }
-
-                if (info.entityInfo.payload.protectionExpiry === 0 &&
-                    instance.storageMonitors[id].decaying === false) {
-                    instance.storageMonitors[id].decaying = true;
-                    client.writeInstanceFile(rustplus.guildId, instance);
-
-                    await DiscordTools.sendDecayingNotification(rustplus.guildId, id);
-                }
-                else if (info.entityInfo.payload.protectionExpiry !== 0) {
-                    instance.storageMonitors[id].decaying = false;
-                    client.writeInstanceFile(rustplus.guildId, instance);
-                }
-
-                await DiscordTools.sendStorageMonitorMessage(rustplus.guildId, id, true, false, false);
+                client.writeInstanceFile(rustplus.guildId, instance);
+                continue;
             }
+
+            if (rustplus.storageMonitors[id].capacity !== 0 &&
+                info.entityInfo.payload.capacity === 0) {
+                await DiscordTools.sendStorageMonitorDisconnectNotification(rustplus.guildId, id);
+            }
+
+            rustplus.storageMonitors[id] = {
+                items: info.entityInfo.payload.items,
+                expiry: info.entityInfo.payload.protectionExpiry,
+                capacity: info.entityInfo.payload.capacity,
+                hasProtection: info.entityInfo.payload.hasProtection
+            }
+
+            if (info.entityInfo.payload.capacity !== 0) {
+                if (info.entityInfo.payload.capacity === 28) {
+                    instance.storageMonitors[id].type = 'toolcupboard';
+                    if (info.entityInfo.payload.protectionExpiry === 0 &&
+                        instance.storageMonitors[id].decaying === false) {
+                        instance.storageMonitors[id].decaying = true;
+
+                        await DiscordTools.sendDecayingNotification(rustplus.guildId, id);
+
+                        if (instance.storageMonitors[id].inGame) {
+                            rustplus.sendTeamMessageAsync(`${instance.storageMonitors[id].name} is decaying!`);
+                        }
+                    }
+                    else if (info.entityInfo.payload.protectionExpiry !== 0) {
+                        instance.storageMonitors[id].decaying = false;
+                    }
+                }
+                else {
+                    instance.storageMonitors[id].type = 'container';
+                }
+                client.writeInstanceFile(rustplus.guildId, instance);
+            }
+
+            await DiscordTools.sendStorageMonitorMessage(rustplus.guildId, id, true, false, false);
         }
     },
 }

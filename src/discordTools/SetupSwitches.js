@@ -15,7 +15,8 @@ module.exports = async (client, rustplus) => {
 
         instance = client.readInstanceFile(rustplus.guildId);
 
-        if (info.error) {
+        if (!(await rustplus.isResponseValid(info))) {
+            await DiscordTools.sendSmartSwitchNotFound(rustplus.guildId, key);
             delete instance.switches[key];
             client.writeInstanceFile(rustplus.guildId, instance);
             continue;

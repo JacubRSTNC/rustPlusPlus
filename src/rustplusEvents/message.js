@@ -78,7 +78,7 @@ module.exports = {
                         }
 
                         if (instance.generalSettings.smartAlarmNotifyInGame) {
-                            rustplus.sendTeamMessageAsync(`${title}: ${message}`, !rustplus.generalSettings.showTrademark);
+                            rustplus.sendTeamMessageAsync(`${title}: ${message}`);
                         }
                     }
 
@@ -87,34 +87,36 @@ module.exports = {
                 else if (instance.storageMonitors.hasOwnProperty(id)) {
                     if (message.broadcast.entityChanged.payload.value === true) return;
 
-                    if (instance.storageMonitors[id].type === 'toolcupboard') {
+                    if (instance.storageMonitors[id].type === 'toolcupboard' ||
+                        message.broadcast.entityChanged.payload.capacity === 28) {
                         setTimeout(async () => {
                             let info = await rustplus.getEntityInfoAsync(id);
-                            if (info.error) return;
+                            if (!(await rustplus.isResponseValid(info))) return;
 
                             rustplus.storageMonitors[id] = {
                                 items: info.entityInfo.payload.items,
-                                expiry: info.entityInfo.payload.protectionExpiry
+                                expiry: info.entityInfo.payload.protectionExpiry,
+                                capacity: info.entityInfo.payload.capacity,
+                                hasProtection: info.entityInfo.payload.hasProtection
                             }
 
                             let instance = client.readInstanceFile(rustplus.guildId);
+                            instance.storageMonitors[id].type = 'toolcupboard';
+
                             if (info.entityInfo.payload.protectionExpiry === 0 &&
                                 instance.storageMonitors[id].decaying === false) {
                                 instance.storageMonitors[id].decaying = true;
-                                client.writeInstanceFile(rustplus.guildId, instance);
 
                                 await DiscordTools.sendDecayingNotification(rustplus.guildId, id);
 
                                 if (instance.storageMonitors[id].inGame) {
-                                    rustplus.sendTeamMessageAsync(
-                                        `${instance.storageMonitors[id].name} is decaying!`,
-                                        !rustplus.generalSettings.showTrademark);
+                                    rustplus.sendTeamMessageAsync(`${instance.storageMonitors[id].name} is decaying!`);
                                 }
                             }
                             else if (info.entityInfo.payload.protectionExpiry !== 0) {
                                 instance.storageMonitors[id].decaying = false;
-                                client.writeInstanceFile(rustplus.guildId, instance);
                             }
+                            client.writeInstanceFile(rustplus.guildId, instance);
 
                             await DiscordTools.sendStorageMonitorMessage(rustplus.guildId, id, true, false, false);
 
@@ -123,7 +125,9 @@ module.exports = {
                     else {
                         rustplus.storageMonitors[id] = {
                             items: message.broadcast.entityChanged.payload.items,
-                            expiry: message.broadcast.entityChanged.payload.protectionExpiry
+                            expiry: message.broadcast.entityChanged.payload.protectionExpiry,
+                            capacity: message.broadcast.entityChanged.payload.capacity,
+                            hasProtection: message.broadcast.entityChanged.payload.hasProtection
                         }
 
                         await DiscordTools.sendStorageMonitorMessage(rustplus.guildId, id, true, false, false);
