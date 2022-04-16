@@ -104,6 +104,36 @@ async function setupGeneralSettings(instance, channel) {
             new MessageAttachment('src/resources/images/settings_logo.png')
         ]
     });
+
+    await channel.send({
+        embeds: [
+            new MessageEmbed()
+                .setColor('#861c0c')
+                .setTitle('Should the leader command be enabled?')
+                .setThumbnail(`attachment://settings_logo.png`)
+        ],
+        components: [
+            DiscordTools.getLeaderCommandEnabledButton(instance.generalSettings.leaderCommandEnabled)
+        ],
+        files: [
+            new MessageAttachment('src/resources/images/settings_logo.png')
+        ]
+    });
+
+    await channel.send({
+        embeds: [
+            new MessageEmbed()
+                .setColor('#861c0c')
+                .setTitle('Should the map be updated in the information channel?')
+                .setThumbnail(`attachment://settings_logo.png`)
+        ],
+        components: [
+            DiscordTools.getUpdateMapInformationButton(instance.generalSettings.updateMapInformation)
+        ],
+        files: [
+            new MessageAttachment('src/resources/images/settings_logo.png')
+        ]
+    });
 }
 
 async function setupNotificationSettings(instance, channel) {

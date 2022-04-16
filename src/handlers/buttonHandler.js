@@ -1,4 +1,5 @@
 const DiscordTools = require('../discordTools/discordTools.js');
+const SmartSwitchGroupHandler = require('./smartSwitchGroupHandler.js');
 
 module.exports = async (client, interaction) => {
     let guildId = interaction.guildId;
@@ -103,6 +104,45 @@ module.exports = async (client, interaction) => {
         }
 
         let row = DiscordTools.getSmartAlarmNotifyInGameButton(instance.generalSettings.smartAlarmNotifyInGame);
+
+        await interaction.update({ components: [row] });
+
+        client.writeInstanceFile(guildId, instance);
+    }
+    else if (interaction.customId === 'leaderCommandEnabled') {
+        instance.generalSettings.leaderCommandEnabled = !instance.generalSettings.leaderCommandEnabled;
+
+        if (rustplus) {
+            rustplus.generalSettings.leaderCommandEnabled = instance.generalSettings.leaderCommandEnabled;
+        }
+
+        let row = DiscordTools.getLeaderCommandEnabledButton(instance.generalSettings.leaderCommandEnabled);
+
+        await interaction.update({ components: [row] });
+
+        client.writeInstanceFile(guildId, instance);
+    }
+    else if (interaction.customId === 'updateMapInformation') {
+        instance.generalSettings.updateMapInformation = !instance.generalSettings.updateMapInformation;
+
+        if (rustplus) {
+            rustplus.generalSettings.updateMapInformation = instance.generalSettings.updateMapInformation;
+
+            if (!rustplus.generalSettings.updateMapInformation) {
+                let channelId = instance.channelId.information;
+                let messageId = instance.informationMessageId.map;
+                let message = undefined;
+                if (messageId !== null) {
+                    message = await DiscordTools.getMessageById(rustplus.guildId, channelId, messageId);
+                    instance.informationMessageId.map = null;
+                    if (message !== undefined) {
+                        await message.delete();
+                    }
+                }
+            }
+        }
+
+        let row = DiscordTools.getUpdateMapInformationButton(instance.generalSettings.updateMapInformation);
 
         await interaction.update({ components: [row] });
 
@@ -214,12 +254,20 @@ module.exports = async (client, interaction) => {
         if (!(rustplus &&
             instance.switches[id].ipPort === `${rustplus.server}-${rustplus.port}` &&
             rustplus.connected)) {
+            try {
+                interaction.deferUpdate();
+            }
+            catch (e) { }
             client.log('ERROR', 'Rustplus is not connected, cannot use Smart Switches...', 'error')
-            interaction.deferUpdate();
             return;
         }
 
         let active = (interaction.customId.endsWith('OnSmartSwitch')) ? true : false;
+
+        instance.switches[id].active = active;
+        client.writeInstanceFile(guildId, instance);
+
+        rustplus.interactionSwitches.push(id);
 
         let response = null;
         if (active) {
@@ -235,17 +283,16 @@ module.exports = async (client, interaction) => {
             delete instance.switches[id];
             client.writeInstanceFile(rustplus.guildId, instance);
 
+            rustplus.interactionSwitches = rustplus.interactionSwitches.filter(e => e !== id);
+
             await client.switchesMessages[rustplus.guildId][id].delete();
             delete client.switchesMessages[rustplus.guildId][id];
             return;
         }
 
-        instance.switches[id].active = active;
-        client.writeInstanceFile(guildId, instance);
-
         DiscordTools.sendSmartSwitchMessage(guildId, id, true, true, false, interaction);
-
-        rustplus.interactionSwitches[id] = active;
+        SmartSwitchGroupHandler.updateSwitchGroupIfContainSwitch(
+            client, interaction.guildId, instance.switches[id].ipPort, id);
     }
     else if (interaction.customId.endsWith('SmartSwitchDelete')) {
         let id = interaction.customId.replace('SmartSwitchDelete', '');
@@ -310,6 +357,36 @@ module.exports = async (client, interaction) => {
 
         await client.storageMonitorsMessages[guildId][id].delete();
         delete client.storageMonitorsMessages[guildId][id];
+
+        client.writeInstanceFile(guildId, instance);
+    }
+    else if (interaction.customId.endsWith('TurnOnGroup') ||
+        interaction.customId.endsWith('TurnOffGroup')) {
+        let id = interaction.customId.replace('TurnOnGroup', '');
+        id = id.replace('TurnOffGroup', '');
+
+        try {
+            interaction.deferUpdate();
+        }
+        catch (e) { }
+
+        if (!rustplus) {
+            client.log('ERROR', 'Rustplus is not connected, cannot use Smart Switch Groups...', 'error')
+            return false;
+        }
+
+        let active = (interaction.customId.endsWith('TurnOnGroup') ? true : false);
+
+        await SmartSwitchGroupHandler.TurnOnOffGroup(
+            client, rustplus, interaction.guildId, `${rustplus.server}-${rustplus.port}`, id, active);
+    }
+    else if (interaction.customId.endsWith('DeleteGroup')) {
+        let id = interaction.customId.replace('DeleteGroup', '');
+
+        delete instance.serverList[`${rustplus.server}-${rustplus.port}`].switchGroups[id];
+
+        await client.switchesMessages[guildId][id].delete();
+        delete client.switchesMessages[guildId][id];
 
         client.writeInstanceFile(guildId, instance);
     }

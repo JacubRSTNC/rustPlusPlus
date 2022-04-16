@@ -4,6 +4,7 @@ const DiscordTools = require('../discordTools/discordTools.js');
 const Map = require('../util/map.js');
 const Constants = require('../util/constants.js');
 const TeamHandler = require('../handlers/teamHandler.js');
+const SmartSwitchGroupHandler = require('./smartSwitchGroupHandler.js');
 
 module.exports = {
     inGameCommandHandler: async function (rustplus, client, message) {
@@ -114,6 +115,11 @@ module.exports = {
                         return false;
                     }
 
+                    instance.switches[id].active = active;
+                    client.writeInstanceFile(rustplus.guildId, instance);
+
+                    rustplus.interactionSwitches.push(id);
+
                     let response = null;
                     if (active) {
                         response = await rustplus.turnSmartSwitchOnAsync(id);
@@ -129,24 +135,47 @@ module.exports = {
                         delete instance.switches[id];
                         client.writeInstanceFile(rustplus.guildId, instance);
 
+                        rustplus.interactionSwitches = rustplus.interactionSwitches.filter(e => e !== id);
+
                         await client.switchesMessages[rustplus.guildId][id].delete();
                         delete client.switchesMessages[rustplus.guildId][id];
                         return false;
                     }
 
-                    instance.switches[id].active = active;
-                    client.writeInstanceFile(rustplus.guildId, instance);
-
                     DiscordTools.sendSmartSwitchMessage(rustplus.guildId, id, true, true, false);
+                    SmartSwitchGroupHandler.updateSwitchGroupIfContainSwitch(
+                        client, rustplus.guildId, `${rustplus.server}-${rustplus.port}`, id);
+
                     let str = `${instance.switches[id].name} was turned `;
                     str += (active) ? 'on.' : 'off.';
                     rustplus.printCommandOutput(str);
 
-                    rustplus.interactionSwitches[id] = active;
+                    return true;
+                }
+            }
+
+            let groups = instance.serverList[`${rustplus.server}-${rustplus.port}`].switchGroups;
+            for (const [groupName, content] of Object.entries(groups)) {
+                let cmd = `${rustplus.generalSettings.prefix}${content.command}`;
+                if (command.startsWith(cmd)) {
+                    let active;
+                    if (command === `${cmd} on`) {
+                        active = true;
+                    }
+                    else if (command === `${cmd} off`) {
+                        active = false;
+                    }
+                    else {
+                        return false;
+                    }
+
+                    await SmartSwitchGroupHandler.TurnOnOffGroup(
+                        client, rustplus, rustplus.guildId, `${rustplus.server}-${rustplus.port}`, groupName, active);
 
                     return true;
                 }
             }
+
             return false;
         }
 
@@ -212,16 +241,20 @@ module.exports = {
             unhandled = unhandled.filter(e => e != parseInt(id));
             let time = Timer.getTimeLeftOfTimer(timer);
             let pos = rustplus.activeCargoShips[parseInt(id)].location;
+            let crates = rustplus.activeCargoShips[parseInt(id)].crates.length;
 
             if (time !== null) {
-                strings.push(`Approximately ${time} before Cargo Ship at ${pos} enters egress stage.`);
+                strings.push(
+                    `Approximately ${time} before Cargo Ship at ${pos} enters egress stage.` +
+                    ` Active crates: (${crates}/3)`);
             }
         }
 
         if (unhandled.length > 0) {
             for (let cargoShip of unhandled) {
                 let pos = rustplus.activeCargoShips[cargoShip].location;
-                strings.push(`Cargo Ship is located at ${pos}.`);
+                let crates = rustplus.activeCargoShips[cargoShip].crates.length;
+                strings.push(`Cargo Ship is located at ${pos}. Active crates: (${crates}/3)`);
             }
         }
 
@@ -366,6 +399,11 @@ module.exports = {
         let command = message.broadcast.teamMessage.message.message;
         let callerId = message.broadcast.teamMessage.message.steamId.toString();
         let str = 'Team leadership was transferred to ';
+
+        if (!rustplus.generalSettings.leaderCommandEnabled) {
+            rustplus.printCommandOutput('Leader command is turned OFF in settings.');
+            return;
+        }
 
         if (rustplus.team.leaderSteamId !== rustplus.playerId) {
             let player = rustplus.team.getPlayer(rustplus.playerId);

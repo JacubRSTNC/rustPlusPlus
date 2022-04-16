@@ -10,6 +10,8 @@ module.exports = {
     async execute(rustplus, client) {
         rustplus.log('CONNECTED', 'RUSTPLUS CONNECTED');
 
+        rustplus.tokens_replenish_task = setInterval(rustplus.replenish_tokens.bind(rustplus), 1000);
+
         let server = `${rustplus.server}-${rustplus.port}`;
         let instance = client.readInstanceFile(rustplus.guildId);
 
@@ -54,12 +56,12 @@ module.exports = {
             if (channel !== undefined) {
                 await rustplus.map.writeMap(true, true);
 
-                let file = new MessageAttachment(`src/resources/images/maps/${rustplus.guildId}_map.png`);
+                let file = new MessageAttachment(`src/resources/images/maps/${rustplus.guildId}_map_full.png`);
                 await channel.send({
                     embeds: [new MessageEmbed()
                         .setColor('#ce412b')
                         .setTitle('Wipe detected!')
-                        .setImage(`attachment://${rustplus.guildId}_map.png`)
+                        .setImage(`attachment://${rustplus.guildId}_map_full.png`)
                         .setTimestamp()
                         .setFooter({
                             text: instance.serverList[server].title
@@ -101,9 +103,10 @@ module.exports = {
             rustplus.refusedConnectionRetry = false;
         }
 
-        require('../discordTools/SetupSwitches')(client, rustplus);
-        require('../discordTools/SetupAlarms')(client, rustplus);
-        require('../discordTools/SetupStorageMonitors')(client, rustplus);
+        await require('../discordTools/SetupSwitches')(client, rustplus);
+        await require('../discordTools/SetupSwitchGroups')(client, rustplus);
+        await require('../discordTools/SetupAlarms')(client, rustplus);
+        await require('../discordTools/SetupStorageMonitors')(client, rustplus);
         rustplus.loadMarkers();
 
         /* Run the first time before starting the interval */
