@@ -10,7 +10,6 @@ module.exports = {
         clearInterval(rustplus.intervalId);
         clearInterval(rustplus.tokens_replenish_task);
 
-        let server = `${rustplus.server}-${rustplus.port}`;
         let instance = client.readInstanceFile(rustplus.guildId);
 
         rustplus.firstPoll = true;
@@ -37,26 +36,26 @@ module.exports = {
             return;
         }
 
-        if (instance.serverList.hasOwnProperty(`${rustplus.server}-${rustplus.port}`)) {
-            if (instance.serverList[server].active && !rustplus.refusedConnectionRetry) {
+        if (instance.serverList.hasOwnProperty(rustplus.serverId)) {
+            if (instance.serverList[rustplus.serverId].active && !rustplus.refusedConnectionRetry) {
                 if (rustplus.connected || rustplus.firstTime) {
                     let channelIdActivity = instance.channelId.activity;
                     let channel = DiscordTools.getTextChannelById(rustplus.guildId, channelIdActivity);
                     if (channel !== undefined) {
-                        await channel.send({
+                        await client.messageSend(channel, {
                             embeds: [new MessageEmbed()
                                 .setColor('#ff0040')
                                 .setTitle('Server just went offline.')
-                                .setThumbnail(instance.serverList[server].img)
+                                .setThumbnail(instance.serverList[rustplus.serverId].img)
                                 .setTimestamp()
                                 .setFooter({
-                                    text: instance.serverList[server].title
+                                    text: instance.serverList[rustplus.serverId].title
                                 })
                             ]
                         });
                     }
 
-                    await DiscordTools.sendServerMessage(rustplus.guildId, server, 2, false, true);
+                    await DiscordTools.sendServerMessage(rustplus.guildId, rustplus.serverId, 2, false, true);
 
                     rustplus.firstTime = false;
                     rustplus.connected = false;

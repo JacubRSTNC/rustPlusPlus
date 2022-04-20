@@ -19,7 +19,7 @@ module.exports = async (client, interaction) => {
             instance.notificationSettings[setting].discord,
             instance.notificationSettings[setting].inGame);
 
-        await interaction.update({ components: [row] });
+        await client.interactionUpdate(interaction, { components: [row] });
 
         client.writeInstanceFile(guildId, instance);
     }
@@ -36,7 +36,7 @@ module.exports = async (client, interaction) => {
             instance.notificationSettings[setting].discord,
             instance.notificationSettings[setting].inGame);
 
-        await interaction.update({ components: [row] });
+        await client.interactionUpdate(interaction, { components: [row] });
 
         client.writeInstanceFile(guildId, instance);
     }
@@ -49,7 +49,7 @@ module.exports = async (client, interaction) => {
 
         let row = DiscordTools.getTrademarkButton(instance.generalSettings.showTrademark);
 
-        await interaction.update({ components: [row] });
+        await client.interactionUpdate(interaction, { components: [row] });
 
         client.writeInstanceFile(guildId, instance);
     }
@@ -62,7 +62,7 @@ module.exports = async (client, interaction) => {
 
         let row = DiscordTools.getInGameCommandsEnabledButton(instance.generalSettings.inGameCommandsEnabled);
 
-        await interaction.update({ components: [row] });
+        await client.interactionUpdate(interaction, { components: [row] });
 
         client.writeInstanceFile(guildId, instance);
     }
@@ -77,7 +77,7 @@ module.exports = async (client, interaction) => {
             instance.generalSettings.fcmAlarmNotificationEnabled,
             instance.generalSettings.fcmAlarmNotificationEveryone);
 
-        await interaction.update({ components: [row] });
+        await client.interactionUpdate(interaction, { components: [row] });
 
         client.writeInstanceFile(guildId, instance);
     }
@@ -92,7 +92,7 @@ module.exports = async (client, interaction) => {
             instance.generalSettings.fcmAlarmNotificationEnabled,
             instance.generalSettings.fcmAlarmNotificationEveryone);
 
-        await interaction.update({ components: [row] });
+        await client.interactionUpdate(interaction, { components: [row] });
 
         client.writeInstanceFile(guildId, instance);
     }
@@ -105,7 +105,7 @@ module.exports = async (client, interaction) => {
 
         let row = DiscordTools.getSmartAlarmNotifyInGameButton(instance.generalSettings.smartAlarmNotifyInGame);
 
-        await interaction.update({ components: [row] });
+        await client.interactionUpdate(interaction, { components: [row] });
 
         client.writeInstanceFile(guildId, instance);
     }
@@ -118,7 +118,7 @@ module.exports = async (client, interaction) => {
 
         let row = DiscordTools.getLeaderCommandEnabledButton(instance.generalSettings.leaderCommandEnabled);
 
-        await interaction.update({ components: [row] });
+        await client.interactionUpdate(interaction, { components: [row] });
 
         client.writeInstanceFile(guildId, instance);
     }
@@ -136,7 +136,12 @@ module.exports = async (client, interaction) => {
                     message = await DiscordTools.getMessageById(rustplus.guildId, channelId, messageId);
                     instance.informationMessageId.map = null;
                     if (message !== undefined) {
-                        await message.delete();
+                        try {
+                            await message.delete();
+                        }
+                        catch (e) {
+                            client.log('ERROR', `Could not delete map message with id: ${messageId}.`, 'error');
+                        }
                     }
                 }
             }
@@ -144,12 +149,12 @@ module.exports = async (client, interaction) => {
 
         let row = DiscordTools.getUpdateMapInformationButton(instance.generalSettings.updateMapInformation);
 
-        await interaction.update({ components: [row] });
+        await client.interactionUpdate(interaction, { components: [row] });
 
         client.writeInstanceFile(guildId, instance);
     }
     else if (interaction.customId.endsWith('ServerConnect')) {
-        let server = interaction.customId.replace('ServerConnect', '');
+        let serverId = interaction.customId.replace('ServerConnect', '');
 
         for (const [key, value] of Object.entries(instance.serverList)) {
             if (value.active) {
@@ -161,10 +166,10 @@ module.exports = async (client, interaction) => {
         }
 
         instance = client.readInstanceFile(guildId);
-        instance.serverList[server].active = true;
+        instance.serverList[serverId].active = true;
         client.writeInstanceFile(guildId, instance);
 
-        await DiscordTools.sendServerMessage(guildId, server, null, false, true, interaction);
+        await DiscordTools.sendServerMessage(guildId, serverId, null, false, true, interaction);
 
         /* Disconnect previous instance is any */
         if (rustplus) {
@@ -174,22 +179,22 @@ module.exports = async (client, interaction) => {
         /* Create the rustplus instance */
         client.createRustplusInstance(
             guildId,
-            instance.serverList[server].serverIp,
-            instance.serverList[server].appPort,
-            instance.serverList[server].steamId,
-            instance.serverList[server].playerToken
+            instance.serverList[serverId].serverIp,
+            instance.serverList[serverId].appPort,
+            instance.serverList[serverId].steamId,
+            instance.serverList[serverId].playerToken
         );
 
     }
     else if (interaction.customId.endsWith('ServerDisconnect') ||
         interaction.customId.endsWith('ServerReconnecting')) {
-        let server = interaction.customId.replace('ServerDisconnect', '');
-        server = server.replace('ServerReconnecting', '');
+        let serverId = interaction.customId.replace('ServerDisconnect', '');
+        serverId = serverId.replace('ServerReconnecting', '');
 
-        instance.serverList[server].active = false;
+        instance.serverList[serverId].active = false;
         client.writeInstanceFile(guildId, instance);
 
-        await DiscordTools.sendServerMessage(guildId, server, null, false, true, interaction);
+        await DiscordTools.sendServerMessage(guildId, serverId, null, false, true, interaction);
 
         /* Disconnect previous instance if any */
         if (rustplus) {
@@ -198,9 +203,9 @@ module.exports = async (client, interaction) => {
         }
     }
     else if (interaction.customId.endsWith('ServerDelete')) {
-        let server = interaction.customId.replace('ServerDelete', '');
+        let serverId = interaction.customId.replace('ServerDelete', '');
 
-        if (instance.serverList[server].active) {
+        if (instance.serverList[serverId].active) {
             if (rustplus) {
                 rustplus.disconnect();
                 rustplus.deleted = true;
@@ -208,32 +213,42 @@ module.exports = async (client, interaction) => {
             }
         }
 
-        let messageId = instance.serverList[server].messageId;
+        let messageId = instance.serverList[serverId].messageId;
         let message = await DiscordTools.getMessageById(guildId, instance.channelId.servers, messageId);
         if (message !== undefined) {
-            await message.delete();
+            try {
+                await message.delete();
+            }
+            catch (e) {
+                client.log('ERROR', `Could not delete server message with id: ${messageId}.`, 'error');
+            }
         }
 
-        delete instance.serverList[server];
+        delete instance.serverList[serverId];
 
         /* Remove all Smart Switches assosiated with this server */
         for (const [key, value] of Object.entries(instance.switches)) {
-            if (`${value.ipPort}` === server) {
+            if (`${value.serverId}` === serverId) {
                 delete instance.switches[key];
             }
         }
-        if (rustplus && (server === `${rustplus.server}-${rustplus.port}`)) {
+        if (rustplus && (serverId === rustplus.serverId)) {
             await DiscordTools.clearTextChannel(rustplus.guildId, instance.channelId.switches, 100);
         }
 
         /* Remove all Smart Alarms assosiated with this server */
         for (const [key, value] of Object.entries(instance.alarms)) {
-            if (`${value.ipPort}` === server) {
+            if (`${value.serverId}` === serverId) {
                 let messageId = instance.alarms[key].messageId;
                 let message = await DiscordTools.getMessageById(
                     rustplus.guildId, instance.channelId.alarms, messageId);
                 if (message !== undefined) {
-                    await message.delete();
+                    try {
+                        await message.delete();
+                    }
+                    catch (e) {
+                        client.log('ERROR', `Could not delete alarm message with id: ${messageId}.`, 'error');
+                    }
                 }
 
                 delete instance.alarms[key];
@@ -246,18 +261,24 @@ module.exports = async (client, interaction) => {
         let id = interaction.customId.replace('OnSmartSwitch', '').replace('OffSmartSwitch', '');
 
         if (!instance.switches.hasOwnProperty(id)) {
-            await client.switchesMessages[guildId][id].delete();
+            try {
+                await client.switchesMessages[guildId][id].delete();
+            }
+            catch (e) {
+                client.log('ERROR', `Could not delete switch message with id: ${id}.`, 'error');
+            }
             delete client.switchesMessages[guildId][id];
             return;
         }
 
         if (!(rustplus &&
-            instance.switches[id].ipPort === `${rustplus.server}-${rustplus.port}` &&
-            rustplus.connected)) {
+            instance.switches[id].serverId === rustplus.serverId && rustplus.connected)) {
             try {
                 interaction.deferUpdate();
             }
-            catch (e) { }
+            catch (e) {
+                client.log('ERROR', 'Could not defer the interaction.', 'error')
+            }
             client.log('ERROR', 'Rustplus is not connected, cannot use Smart Switches...', 'error')
             return;
         }
@@ -285,21 +306,31 @@ module.exports = async (client, interaction) => {
 
             rustplus.interactionSwitches = rustplus.interactionSwitches.filter(e => e !== id);
 
-            await client.switchesMessages[rustplus.guildId][id].delete();
+            try {
+                await client.switchesMessages[rustplus.guildId][id].delete();
+            }
+            catch (e) {
+                client.log('ERROR', `Could not delete switch message with id: ${id}.`, 'error');
+            }
             delete client.switchesMessages[rustplus.guildId][id];
             return;
         }
 
         DiscordTools.sendSmartSwitchMessage(guildId, id, true, true, false, interaction);
         SmartSwitchGroupHandler.updateSwitchGroupIfContainSwitch(
-            client, interaction.guildId, instance.switches[id].ipPort, id);
+            client, interaction.guildId, instance.switches[id].serverId, id);
     }
     else if (interaction.customId.endsWith('SmartSwitchDelete')) {
         let id = interaction.customId.replace('SmartSwitchDelete', '');
 
         delete instance.switches[id];
 
-        await client.switchesMessages[guildId][id].delete();
+        try {
+            await client.switchesMessages[guildId][id].delete();
+        }
+        catch (e) {
+            client.log('ERROR', `Could not delete switch message with id: ${id}.`, 'error');
+        }
         delete client.switchesMessages[guildId][id];
 
         client.writeInstanceFile(guildId, instance);
@@ -318,7 +349,12 @@ module.exports = async (client, interaction) => {
         let messageId = instance.alarms[id].messageId;
         let message = await DiscordTools.getMessageById(guildId, instance.channelId.alarms, messageId);
         if (message !== undefined) {
-            await message.delete();
+            try {
+                await message.delete();
+            }
+            catch (e) {
+                client.log('ERROR', `Could not delete alarm message with id: ${messageId}.`, 'error');
+            }
         }
 
         delete instance.alarms[id];
@@ -345,7 +381,12 @@ module.exports = async (client, interaction) => {
 
         delete instance.storageMonitors[id];
 
-        await client.storageMonitorsMessages[guildId][id].delete();
+        try {
+            await client.storageMonitorsMessages[guildId][id].delete();
+        }
+        catch (e) {
+            client.log('ERROR', `Could not delete storage monitor message with id: ${id}.`, 'error');
+        }
         delete client.storageMonitorsMessages[guildId][id];
 
         client.writeInstanceFile(guildId, instance);
@@ -355,7 +396,12 @@ module.exports = async (client, interaction) => {
 
         delete instance.storageMonitors[id];
 
-        await client.storageMonitorsMessages[guildId][id].delete();
+        try {
+            await client.storageMonitorsMessages[guildId][id].delete();
+        }
+        catch (e) {
+            client.log('ERROR', `Could not delete storage monitor message with id: ${id}.`, 'error');
+        }
         delete client.storageMonitorsMessages[guildId][id];
 
         client.writeInstanceFile(guildId, instance);
@@ -368,7 +414,9 @@ module.exports = async (client, interaction) => {
         try {
             interaction.deferUpdate();
         }
-        catch (e) { }
+        catch (e) {
+            client.log('ERROR', 'Could not defer the interaction.', 'error');
+        }
 
         if (!rustplus) {
             client.log('ERROR', 'Rustplus is not connected, cannot use Smart Switch Groups...', 'error')
@@ -378,14 +426,19 @@ module.exports = async (client, interaction) => {
         let active = (interaction.customId.endsWith('TurnOnGroup') ? true : false);
 
         await SmartSwitchGroupHandler.TurnOnOffGroup(
-            client, rustplus, interaction.guildId, `${rustplus.server}-${rustplus.port}`, id, active);
+            client, rustplus, interaction.guildId, rustplus.serverId, id, active);
     }
     else if (interaction.customId.endsWith('DeleteGroup')) {
         let id = interaction.customId.replace('DeleteGroup', '');
 
-        delete instance.serverList[`${rustplus.server}-${rustplus.port}`].switchGroups[id];
+        delete instance.serverList[rustplus.serverId].switchGroups[id];
 
-        await client.switchesMessages[guildId][id].delete();
+        try {
+            await client.switchesMessages[guildId][id].delete();
+        }
+        catch (e) {
+            client.log('ERROR', `Could not delete switch message with id: ${id}.`, 'error');
+        }
         delete client.switchesMessages[guildId][id];
 
         client.writeInstanceFile(guildId, instance);

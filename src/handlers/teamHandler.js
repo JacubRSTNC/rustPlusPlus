@@ -18,9 +18,7 @@ module.exports = {
             return;
         }
 
-        if (rustplus.team.isLeaderSteamIdChanged(teamInfo)) {
-            return;
-        }
+        if (rustplus.team.isLeaderSteamIdChanged(teamInfo)) return;
 
         let newPlayers = rustplus.team.getNewPlayers(teamInfo);
         let leftPlayers = rustplus.team.getLeftPlayers(teamInfo);
@@ -28,7 +26,7 @@ module.exports = {
         for (let steamId of leftPlayers) {
             let player = rustplus.team.getPlayer(steamId);
             let png = await Scrape.scrapeSteamProfilePicture(rustplus, steamId);
-            await channel.send({
+            await client.messageSend(channel, {
                 embeds: [new MessageEmbed()
                     .setColor('#606060')
                     .setAuthor({
@@ -37,9 +35,7 @@ module.exports = {
                         url: `${Constants.STEAM_PROFILES_URL}${steamId}`
                     })
                     .setTimestamp()
-                    .setFooter({
-                        text: instance.serverList[`${rustplus.server}-${rustplus.port}`].title
-                    })
+                    .setFooter({ text: instance.serverList[rustplus.serverId].title })
                 ]
             });
             rustplus.sendTeamMessage(`${player.name} left the team.`);
@@ -49,7 +45,7 @@ module.exports = {
             for (let player of teamInfo.members) {
                 if (player.steamId.toString() === steamId) {
                     let png = await Scrape.scrapeSteamProfilePicture(rustplus, steamId);
-                    await channel.send({
+                    await client.messageSend(channel, {
                         embeds: [new MessageEmbed()
                             .setColor('#00ff40')
                             .setAuthor({
@@ -58,9 +54,7 @@ module.exports = {
                                 url: `${Constants.STEAM_PROFILES_URL}${steamId}`
                             })
                             .setTimestamp()
-                            .setFooter({
-                                text: instance.serverList[`${rustplus.server}-${rustplus.port}`].title
-                            })
+                            .setFooter({ text: instance.serverList[rustplus.serverId].title })
                         ]
                     });
                     rustplus.sendTeamMessage(`${player.name} joined the team.`);
@@ -77,7 +71,7 @@ module.exports = {
                 if (player.steamId === playerUpdated.steamId.toString()) {
                     if (player.isGoneOnline(playerUpdated)) {
                         let png = await Scrape.scrapeSteamProfilePicture(rustplus, player.steamId);
-                        await channel.send({
+                        await client.messageSend(channel, {
                             embeds: [new MessageEmbed()
                                 .setColor('#00ff40')
                                 .setAuthor({
@@ -86,9 +80,7 @@ module.exports = {
                                     url: `${Constants.STEAM_PROFILES_URL}${player.steamId}`
                                 })
                                 .setTimestamp()
-                                .setFooter({
-                                    text: instance.serverList[`${rustplus.server}-${rustplus.port}`].title
-                                })
+                                .setFooter({ text: instance.serverList[rustplus.serverId].title })
                             ]
                         });
                         rustplus.sendTeamMessage(`${player.name} just connected.`);
@@ -96,7 +88,7 @@ module.exports = {
 
                     if (player.isGoneOffline(playerUpdated)) {
                         let png = await Scrape.scrapeSteamProfilePicture(rustplus, player.steamId);
-                        await channel.send({
+                        await client.messageSend(channel, {
                             embeds: [new MessageEmbed()
                                 .setColor('#ff0040')
                                 .setAuthor({
@@ -105,9 +97,7 @@ module.exports = {
                                     url: `${Constants.STEAM_PROFILES_URL}${player.steamId}`
                                 })
                                 .setTimestamp()
-                                .setFooter({
-                                    text: instance.serverList[`${rustplus.server}-${rustplus.port}`].title
-                                })
+                                .setFooter({ text: instance.serverList[rustplus.serverId].title })
                             ]
                         });
                         rustplus.sendTeamMessage(`${player.name} just disconnected.`);
@@ -116,7 +106,7 @@ module.exports = {
                     if (!player.isOnline && !playerUpdated.isOnline && player.isGoneDead(playerUpdated)) {
                         let pos = player.pos;
                         let png = await Scrape.scrapeSteamProfilePicture(rustplus, player.steamId);
-                        await channel.send({
+                        await client.messageSend(channel, {
                             embeds: [new MessageEmbed()
                                 .setColor('#ff0040')
                                 .setAuthor({
@@ -125,9 +115,7 @@ module.exports = {
                                     url: `${Constants.STEAM_PROFILES_URL}${player.steamId}`
                                 })
                                 .setTimestamp()
-                                .setFooter({
-                                    text: instance.serverList[`${rustplus.server}-${rustplus.port}`].title
-                                })
+                                .setFooter({ text: instance.serverList[rustplus.serverId].title })
                             ]
                         });
                         rustplus.sendTeamMessage(`${player.name} just got offline killed at ${pos}.`);

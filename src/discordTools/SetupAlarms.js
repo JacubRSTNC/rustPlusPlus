@@ -2,10 +2,9 @@ const DiscordTools = require('./discordTools.js');
 
 module.exports = async (client, rustplus) => {
     let instance = client.readInstanceFile(rustplus.guildId);
-    let server = `${rustplus.server}-${rustplus.port}`;
 
     for (const [key, value] of Object.entries(instance.alarms)) {
-        if (server !== `${value.ipPort}`) continue;
+        if (rustplus.serverId !== `${value.serverId}`) continue;
 
         let info = await rustplus.getEntityInfoAsync(key);
 
@@ -15,7 +14,12 @@ module.exports = async (client, rustplus) => {
             let messageId = instance.alarms[key].messageId;
             let message = await DiscordTools.getMessageById(rustplus.guildId, instance.channelId.alarms, messageId);
             if (message !== undefined) {
-                await message.delete();
+                try {
+                    await message.delete();
+                }
+                catch (e) {
+                    client.log('ERROR', `Could not delete alarm message with id: ${messageId}.`, 'error');
+                }
             }
 
             delete instance.alarms[key];

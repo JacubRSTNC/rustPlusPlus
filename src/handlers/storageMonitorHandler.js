@@ -2,8 +2,6 @@ const DiscordTools = require('../discordTools/discordTools.js');
 
 module.exports = {
     handler: async function (rustplus, client) {
-        let server = `${rustplus.server}-${rustplus.port}`;
-
         if (rustplus.storageMonitorIntervalCounter === 29) {
             rustplus.storageMonitorIntervalCounter = 0;
         }
@@ -14,7 +12,7 @@ module.exports = {
 
         let instance = client.readInstanceFile(rustplus.guildId);
         for (const [id, content] of Object.entries(instance.storageMonitors)) {
-            if (server !== content.ipPort) continue;
+            if (rustplus.serverId !== content.serverId) continue;
             instance = client.readInstanceFile(rustplus.guildId);
 
             let info = await rustplus.getEntityInfoAsync(id);
@@ -23,7 +21,12 @@ module.exports = {
 
                 delete instance.storageMonitors[id];
 
-                await client.storageMonitorsMessages[rustplus.guildId][id].delete();
+                try {
+                    await client.storageMonitorsMessages[rustplus.guildId][id].delete();
+                }
+                catch (e) {
+                    client.log('ERROR', `Could not delete storage monitor message for entityId: ${id}.`, 'error');
+                }
                 delete client.storageMonitorsMessages[rustplus.guildId][id];
 
                 client.writeInstanceFile(rustplus.guildId, instance);

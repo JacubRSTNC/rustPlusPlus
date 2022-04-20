@@ -13,6 +13,8 @@ class RustPlus extends RP {
     constructor(guildId, serverIp, appPort, steamId, playerToken) {
         super(serverIp, appPort, steamId, playerToken);
 
+        this.serverId = `${this.server}-${this.port}`;
+
         this.guildId = guildId;
         this.intervalId = 0;
         this.logger = null;
@@ -43,7 +45,7 @@ class RustPlus extends RP {
             let messageMaxLength = Constants.MAX_LENGTH_TEAM_MESSAGE - trademark.length;
             let strings = message.match(new RegExp(`.{1,${messageMaxLength}}(\\s|$)`, 'g'));
 
-            if (this.team.allOffline) {
+            if (this.team === null || this.team.allOffline) {
                 return;
             }
 
@@ -153,18 +155,8 @@ class RustPlus extends RP {
                 })
                 .setTimestamp();
 
-            channel.send({ embeds: [embed], files: [file] });
+            Client.client.messageSend(channel, { embeds: [embed], files: [file] });
         }
-    }
-
-    addItemToLookFor(id) {
-        if (!this.itemsToLookForId.includes(id)) {
-            this.itemsToLookForId.push(id);
-        }
-    }
-
-    removeItemToLookFor(id) {
-        this.itemsToLookForId = this.itemsToLookForId.filter(e => e !== id);
     }
 
     replenish_tokens() {

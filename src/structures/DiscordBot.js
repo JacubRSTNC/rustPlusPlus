@@ -148,6 +148,39 @@ class DiscordBot extends Client {
             }
         });
     }
+
+    async interactionUpdate(interaction, content) {
+        try {
+            return await interaction.update(content);
+        }
+        catch (e) {
+            this.log('ERROR', `Interaction failed: ${e}`, 'error');
+        }
+
+        return undefined;
+    }
+
+    async messageEdit(message, content) {
+        try {
+            return await message.edit(content);
+        }
+        catch (e) {
+            this.log('ERROR', `Message edit failed: ${e}`, 'error');
+        }
+
+        return undefined;
+    }
+
+    async messageSend(channel, content) {
+        try {
+            return await channel.send(content);
+        }
+        catch (e) {
+            this.log('ERROR', `Message send failed: ${e}`, 'error');
+        }
+
+        return undefined;
+    }
 }
 
 module.exports = DiscordBot;

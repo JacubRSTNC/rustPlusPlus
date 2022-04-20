@@ -67,17 +67,12 @@ module.exports = {
 
             instance = client.readInstanceFile(rustplus.guildId);
 
-            let msg = await channel.send({ files: [file] });
+            let msg = await client.messageSend(channel, { files: [file] });
             instance.informationMessageId.map = msg.id;
             client.writeInstanceFile(rustplus.guildId, instance);
         }
         else {
-            try {
-                await message.edit({ files: [file] });
-            }
-            catch (e) {
-                rustplus.log('ERROR', 'Could not update OMG', 'error');
-            }
+            await client.messageEdit(message, { files: [file] });
         }
     },
 
@@ -108,13 +103,13 @@ module.exports = {
             .setThumbnail('attachment://server_info_logo.png')
             .setDescription(serverName)
             .addFields(
-                { name: 'Players', value: pop, inline: true },
-                { name: 'Time', value: serverTime, inline: true },
-                { name: 'Wipe', value: wipeDay, inline: true });
+                { name: 'Players', value: `\`${pop}\``, inline: true },
+                { name: 'Time', value: `\`${serverTime}\``, inline: true },
+                { name: 'Wipe', value: `\`${wipeDay}\``, inline: true });
 
         if (timeLeft !== null) {
             embed.addFields(
-                { name: timeLeftTitle, value: timeLeft, inline: true },
+                { name: timeLeftTitle, value: `\`${timeLeft}\``, inline: true },
                 { name: '\u200B', value: '\u200B', inline: true },
                 { name: '\u200B', value: '\u200B', inline: true });
         }
@@ -123,10 +118,10 @@ module.exports = {
         }
 
         embed.addFields(
-            { name: 'Map Size', value: mapSize, inline: true },
-            { name: 'Map Seed', value: mapSeed, inline: true },
-            { name: 'Map Salt', value: mapSalt, inline: true },
-            { name: 'Map', value: map, inline: true });
+            { name: 'Map Size', value: `\`${mapSize}\``, inline: true },
+            { name: 'Map Seed', value: `\`${mapSeed}\``, inline: true },
+            { name: 'Map Salt', value: `\`${mapSalt}\``, inline: true },
+            { name: 'Map', value: `\`${map}\``, inline: true });
 
         if (rustplus.informationIntervalCounter === 0) {
             await sendInformationEmbed(rustplus, client, instance, embed, files, message, 'server');
@@ -322,15 +317,15 @@ module.exports = {
             .setThumbnail('attachment://event_info_logo.png')
             .setDescription('In-game event information')
             .addFields(
-                { name: 'Cargoship', value: cargoShipMessage, inline: true },
-                { name: 'Patrol Helicopter', value: patrolHelicopterMessage, inline: true },
-                { name: 'Bradley APC', value: bradleyAPCMessage, inline: true },
-                { name: 'Small Oil Rig', value: smallOilMessage, inline: true },
-                { name: 'Large Oil Rig', value: largeOilMessage, inline: true },
-                { name: 'Chinook 47', value: ch47Message, inline: true },
-                { name: 'Crate', value: crateMessage, inline: true })
+                { name: 'Cargoship', value: `\`${cargoShipMessage}\``, inline: true },
+                { name: 'Patrol Helicopter', value: `\`${patrolHelicopterMessage}\``, inline: true },
+                { name: 'Bradley APC', value: `\`${bradleyAPCMessage}\``, inline: true },
+                { name: 'Small Oil Rig', value: `\`${smallOilMessage}\``, inline: true },
+                { name: 'Large Oil Rig', value: `\`${largeOilMessage}\``, inline: true },
+                { name: 'Chinook 47', value: `\`${ch47Message}\``, inline: true },
+                { name: 'Crate', value: `\`${crateMessage}\``, inline: true })
             .setFooter({
-                text: instance.serverList[`${rustplus.server}-${rustplus.port}`].title
+                text: instance.serverList[rustplus.serverId].title
             });
 
         if (rustplus.informationIntervalCounter === 0) {
@@ -373,7 +368,7 @@ module.exports = {
                 { name: 'Status', value: status, inline: true },
                 { name: 'Location', value: locations, inline: true })
             .setFooter({
-                text: instance.serverList[`${rustplus.server}-${rustplus.port}`].title
+                text: instance.serverList[rustplus.serverId].title
             });
 
         if (rustplus.informationIntervalCounter === 0) {
@@ -393,11 +388,11 @@ async function sendInformationEmbed(rustplus, client, instance, embed, files, me
 
         instance = client.readInstanceFile(rustplus.guildId);
 
-        let msg = await channel.send({ embeds: [embed], files: files });
+        let msg = await client.messageSend(channel, { embeds: [embed], files: files });
         instance.informationMessageId[messageType] = msg.id;
         client.writeInstanceFile(rustplus.guildId, instance);
     }
     else {
-        await message.edit({ embeds: [embed] });
+        await client.messageEdit(message, { embeds: [embed] });
     }
 }

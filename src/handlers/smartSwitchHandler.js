@@ -4,12 +4,11 @@ const SmartSwitchGroupHandler = require('./smartSwitchGroupHandler.js');
 module.exports = {
     handler: async function (rustplus, client, time) {
         let instance = client.readInstanceFile(rustplus.guildId);
-        let server = `${rustplus.server}-${rustplus.port}`;
 
         if (rustplus.smartSwitchIntervalCounter === 29) {
             rustplus.smartSwitchIntervalCounter = 0;
             for (const [key, value] of Object.entries(instance.switches)) {
-                if (server !== `${value.ipPort}`) continue;
+                if (rustplus.serverId !== `${value.serverId}`) continue;
                 instance = client.readInstanceFile(rustplus.guildId);
 
                 let info = await rustplus.getEntityInfoAsync(key);
@@ -19,7 +18,12 @@ module.exports = {
                     delete instance.switches[key];
                     client.writeInstanceFile(rustplus.guildId, instance);
 
-                    await client.switchesMessages[rustplus.guildId][key].delete();
+                    try {
+                        await client.switchesMessages[rustplus.guildId][key].delete();
+                    }
+                    catch (e) {
+                        client.log('ERROR', `Could not delete switch message for entityId: ${key}.`, 'error');
+                    }
                     delete client.switchesMessages[rustplus.guildId][key];
                     continue;
                 }
@@ -32,7 +36,7 @@ module.exports = {
         let changedSwitches = [];
         if (rustplus.time.isTurnedDay(time)) {
             for (const [key, value] of Object.entries(instance.switches)) {
-                if (server !== `${value.ipPort}`) continue;
+                if (rustplus.serverId !== `${value.serverId}`) continue;
                 instance = client.readInstanceFile(rustplus.guildId);
 
                 if (value.autoDayNight === 1) {
@@ -50,7 +54,12 @@ module.exports = {
 
                         rustplus.interactionSwitches = rustplus.interactionSwitches.filter(e => e !== key);
 
-                        await client.switchesMessages[rustplus.guildId][key].delete();
+                        try {
+                            await client.switchesMessages[rustplus.guildId][key].delete();
+                        }
+                        catch (e) {
+                            client.log('ERROR', `Could not delete switch message for entityId: ${key}.`, 'error');
+                        }
                         delete client.switchesMessages[rustplus.guildId][key];
                         continue;
                     }
@@ -74,7 +83,12 @@ module.exports = {
 
                         rustplus.interactionSwitches = rustplus.interactionSwitches.filter(e => e !== key);
 
-                        await client.switchesMessages[rustplus.guildId][key].delete();
+                        try {
+                            await client.switchesMessages[rustplus.guildId][key].delete();
+                        }
+                        catch (e) {
+                            client.log('ERROR', `Could not delete switch message for entityId: ${key}.`, 'error');
+                        }
                         delete client.switchesMessages[rustplus.guildId][key];
                         continue;
                     }
@@ -86,7 +100,7 @@ module.exports = {
         }
         else if (rustplus.time.isTurnedNight(time)) {
             for (const [key, value] of Object.entries(instance.switches)) {
-                if (server !== `${value.ipPort}`) continue;
+                if (rustplus.serverId !== `${value.serverId}`) continue;
                 instance = client.readInstanceFile(rustplus.guildId);
 
                 if (value.autoDayNight === 1) {
@@ -104,7 +118,12 @@ module.exports = {
 
                         rustplus.interactionSwitches = rustplus.interactionSwitches.filter(e => e !== key);
 
-                        await client.switchesMessages[rustplus.guildId][key].delete();
+                        try {
+                            await client.switchesMessages[rustplus.guildId][key].delete();
+                        }
+                        catch (e) {
+                            client.log('ERROR', `Could not delete switch message for entityId: ${key}.`, 'error');
+                        }
                         delete client.switchesMessages[rustplus.guildId][key];
                         continue;
                     }
@@ -127,7 +146,12 @@ module.exports = {
 
                         rustplus.interactionSwitches = rustplus.interactionSwitches.filter(e => e !== key);
 
-                        await client.switchesMessages[rustplus.guildId][key].delete();
+                        try {
+                            await client.switchesMessages[rustplus.guildId][key].delete();
+                        }
+                        catch (e) {
+                            client.log('ERROR', `Could not delete switch message for entityId: ${key}.`, 'error');
+                        }
                         delete client.switchesMessages[rustplus.guildId][key];
                         continue;
                     }
@@ -139,7 +163,7 @@ module.exports = {
         }
 
         let groups = SmartSwitchGroupHandler.getGroupsFromSwitchList(
-            client, rustplus.guildId, server, changedSwitches);
+            client, rustplus.guildId, rustplus.serverId, changedSwitches);
 
         for (let group of groups) {
             await DiscordTools.sendSmartSwitchGroupMessage(rustplus.guildId, group);

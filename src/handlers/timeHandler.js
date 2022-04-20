@@ -89,28 +89,23 @@ module.exports = {
             rustplus.time.timeTillActive = true;
 
             let instance = client.readInstanceFile(rustplus.guildId);
-            let server = `${rustplus.server}-${rustplus.port}`;
 
-            instance.serverList[server].timeTillDay = rustplus.time.timeTillDay;
-            instance.serverList[server].timeTillNight = rustplus.time.timeTillNight;
+            instance.serverList[rustplus.serverId].timeTillDay = rustplus.time.timeTillDay;
+            instance.serverList[rustplus.serverId].timeTillNight = rustplus.time.timeTillNight;
             client.writeInstanceFile(rustplus.guildId, instance);
 
             rustplus.log('TIME', '24 Successful Hours in-game time have passed.');
             return;
         }
 
-        if (newTime >= time.sunrise && newTime < time.sunset) {
-            /* It's Day */
-            /* Increment all values in the object */
+        if (newTime >= time.sunrise && newTime < time.sunset) { /* It's Day */
             for (let id of Object.keys(rustplus.time.timeTillNight)) {
                 rustplus.time.timeTillNight[id] += (client.pollingIntervalMs / 1000);
             }
 
             rustplus.time.timeTillNight[newTime] = 0;
         }
-        else {
-            /* It's Night */
-            /* Increment all values in the object */
+        else { /* It's Night */
             for (let id of Object.keys(rustplus.time.timeTillDay)) {
                 rustplus.time.timeTillDay[id] += (client.pollingIntervalMs / 1000);
             }

@@ -12,9 +12,7 @@ module.exports = {
 
         rustplus.tokens_replenish_task = setInterval(rustplus.replenish_tokens.bind(rustplus), 1000);
 
-        let server = `${rustplus.server}-${rustplus.port}`;
         let instance = client.readInstanceFile(rustplus.guildId);
-
         let channel = DiscordTools.getTextChannelById(rustplus.guildId, instance.channelId.activity);
 
         /* Get some map parameters once when connected (to avoid calling getMap continuously) */
@@ -23,23 +21,21 @@ module.exports = {
             rustplus.log('ERROR', 'Something went wrong with connection.', 'error');
 
             if (channel !== undefined) {
-                await channel.send({
+                await client.messageSend(channel, {
                     embeds: [new MessageEmbed()
                         .setColor('#ff0040')
                         .setTitle('The connection to the server seems to be invalid. Try to re-pair to the server.')
-                        .setThumbnail(instance.serverList[server].img)
+                        .setThumbnail(instance.serverList[rustplus.serverId].img)
                         .setTimestamp()
-                        .setFooter({
-                            text: instance.serverList[server].title
-                        })
+                        .setFooter({ text: instance.serverList[rustplus.serverId].title })
                     ]
                 });
             }
 
-            instance.serverList[server].active = false;
+            instance.serverList[rustplus.serverId].active = false;
             client.writeInstanceFile(rustplus.guildId, instance);
 
-            await DiscordTools.sendServerMessage(rustplus.guildId, server, null, false, true);
+            await DiscordTools.sendServerMessage(rustplus.guildId, rustplus.serverId, null, false, true);
 
             rustplus.disconnect();
             delete client.rustplusInstances[rustplus.guildId];
@@ -57,15 +53,13 @@ module.exports = {
                 await rustplus.map.writeMap(true, true);
 
                 let file = new MessageAttachment(`src/resources/images/maps/${rustplus.guildId}_map_full.png`);
-                await channel.send({
+                await client.messageSend(channel, {
                     embeds: [new MessageEmbed()
                         .setColor('#ce412b')
                         .setTitle('Wipe detected!')
                         .setImage(`attachment://${rustplus.guildId}_map_full.png`)
                         .setTimestamp()
-                        .setFooter({
-                            text: instance.serverList[server].title
-                        })
+                        .setFooter({ text: instance.serverList[rustplus.serverId].title })
                     ],
                     content: "@everyone",
                     allowedMentions: {parse: ["everyone"]},
@@ -82,21 +76,19 @@ module.exports = {
         if (!rustplus.connected) {
             if (rustplus.isReconnect) {
                 if (channel !== undefined) {
-                    await channel.send({
+                    await client.messageSend(channel, {
                         embeds: [new MessageEmbed()
                             .setColor('#00ff40')
                             .setTitle('Server just went online.')
-                            .setThumbnail(instance.serverList[server].img)
+                            .setThumbnail(instance.serverList[rustplus.serverId].img)
                             .setTimestamp()
-                            .setFooter({
-                                text: instance.serverList[server].title
-                            })
+                            .setFooter({ text: instance.serverList[rustplus.serverId].title })
                         ]
                     });
                 }
             }
 
-            await DiscordTools.sendServerMessage(rustplus.guildId, server, null, false, true);
+            await DiscordTools.sendServerMessage(rustplus.guildId, rustplus.serverId, null, false, true);
 
             rustplus.connected = true;
             rustplus.isReconnect = false;
