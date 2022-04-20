@@ -217,11 +217,11 @@ class Map {
 
         let oceanMarginOffset = this.oceanMargin * (1 / 2);
 
-        await this.mapMarkerImageMeta.map.jimp.crop(
-            oceanMarginOffset,
-            oceanMarginOffset,
-            this.width - (oceanMarginOffset * 2),
-            this.height - (oceanMarginOffset * 2));
+        // await this.mapMarkerImageMeta.map.jimp.crop(
+        //     oceanMarginOffset,
+        //     oceanMarginOffset,
+        //     this.width - (oceanMarginOffset * 2),
+        //     this.height - (oceanMarginOffset * 2));
 
         await this.mapMarkerImageMeta.map.jimp.writeAsync(
             this.mapMarkerImageMeta.map.image.replace('clean.png', 'full.png'));
