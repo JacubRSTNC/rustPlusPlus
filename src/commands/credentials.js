@@ -1,6 +1,7 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const _ = require('lodash');
 const DiscordTools = require('../discordTools/discordTools.js');
+const { MessageEmbed } = require('discord.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -51,6 +52,24 @@ module.exports = {
                 .setName('clear')
                 .setDescription('Clear the FCM Credentials.')),
     async execute(client, interaction) {
+        let instance = client.readInstanceFile(interaction.guildId);
+
+        if (instance.role !== null) {
+            if (!interaction.member.permissions.has('ADMINISTRATOR') &&
+                !interaction.member.roles.cache.has(instance.role)) {
+                let role = DiscordTools.getRole(interaction.guildId, instance.role);
+                let str = `You are not part of the '${role.name}' role, therefore you can't run bot commands.`;
+                await client.interactionReply(interaction, {
+                    embeds: [new MessageEmbed()
+                        .setColor('#ff0040')
+                        .setDescription(`\`\`\`diff\n- ${str}\n\`\`\``)],
+                    ephemeral: true
+                });
+                client.log('WARNING', str);
+                return;
+            }
+        }
+
         await interaction.deferReply({ ephemeral: true });
 
         switch (interaction.options.getSubcommand()) {
@@ -92,11 +111,14 @@ async function setCredentials(client, interaction) {
     for (let guild of client.guilds.cache) {
         let instance = client.readCredentialsFile(guild[0]);
         if (_.isEqual(credentials, instance.credentials)) {
-            await interaction.editReply({
-                content: 'Credentials are already used for another discord server!',
+            let str = 'Credentials are already used for another discord server!';
+            await client.interactionEditReply(interaction, {
+                embeds: [new MessageEmbed()
+                    .setColor('#ff0040')
+                    .setDescription(`\`\`\`diff\n- ${str}\n\`\`\``)],
                 ephemeral: true
             });
-            client.log('WARNING', 'Credentials are already used for another discord server!');
+            client.log('WARNING', str);
             return;
         }
     }
@@ -108,11 +130,14 @@ async function setCredentials(client, interaction) {
     /* Start Fcm Listener */
     require('../util/FcmListener')(client, DiscordTools.getGuild(interaction.guildId));
 
-    await interaction.editReply({
-        content: 'Credentials were set successfully!',
+    let str = 'Credentials were set successfully!';
+    await client.interactionEditReply(interaction, {
+        embeds: [new MessageEmbed()
+            .setColor('#ce412b')
+            .setDescription(`\`\`\`diff\n+ ${str}\n\`\`\``)],
         ephemeral: true
     });
-    client.log('INFO', 'Credentials were set successfully!');
+    client.log('INFO', str);
 }
 
 async function clearCredentials(client, interaction) {
@@ -124,9 +149,12 @@ async function clearCredentials(client, interaction) {
     instance.credentials = null;
     client.writeCredentialsFile(interaction.guildId, instance);
 
-    await interaction.editReply({
-        content: 'Credentials were cleared successfully!',
+    let str = 'Credentials were cleared successfully!';
+    await client.interactionEditReply(interaction, {
+        embeds: [new MessageEmbed()
+            .setColor('#ce412b')
+            .setDescription(`\`\`\`diff\n+ ${str}\n\`\`\``)],
         ephemeral: true
     });
-    client.log('INFO', 'Credentials were cleared successfully!');
+    client.log('INFO', str);
 }

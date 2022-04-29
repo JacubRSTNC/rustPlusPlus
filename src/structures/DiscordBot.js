@@ -22,6 +22,9 @@ class DiscordBot extends Client {
 
         this.pollingIntervalMs = Config.general.pollingIntervalMs;
 
+        this.battlemetricsIntervalId = null;
+        this.battlemetricsIntervalCounter = 0;
+
         this.loadCommands();
         this.loadEvents();
     }
@@ -149,12 +152,54 @@ class DiscordBot extends Client {
         });
     }
 
+    findAvailableTrackerName(guildId) {
+        let instance = this.readInstanceFile(guildId);
+        let baseName = 'Tracker';
+
+        let index = 0;
+        while (true) {
+            let testName = `${baseName}${(index === 0) ? '' : index}`;
+            let exist = false;
+            if (Object.keys(instance.trackers).includes(testName)) {
+                exist = true;
+            }
+
+            if (exist) {
+                index += 1;
+                continue;
+            }
+            return testName;
+        }
+    }
+
+    async interactionReply(interaction, content) {
+        try {
+            return await interaction.reply(content);
+        }
+        catch (e) {
+            this.log('ERROR', `Interaction reply failed: ${e}`, 'error');
+        }
+
+        return undefined;
+    }
+
+    async interactionEditReply(interaction, content) {
+        try {
+            return await interaction.editReply(content);
+        }
+        catch (e) {
+            this.log('ERROR', `Interaction edit reply failed: ${e}`, 'error');
+        }
+
+        return undefined;
+    }
+
     async interactionUpdate(interaction, content) {
         try {
             return await interaction.update(content);
         }
         catch (e) {
-            this.log('ERROR', `Interaction failed: ${e}`, 'error');
+            this.log('ERROR', `Interaction update failed: ${e}`, 'error');
         }
 
         return undefined;

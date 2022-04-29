@@ -39,9 +39,9 @@ async function setupGeneralSettings(client, instance, channel) {
     await client.messageSend(channel, {
         embeds: [new MessageEmbed()
             .setColor('#861c0c')
-            .setTitle(`Should the 'rustPlusPlus' trademark be shown for in-game bot messages?`)
+            .setTitle(`Select which trademark that should be shown in every in-game message.`)
             .setThumbnail(`attachment://settings_logo.png`)],
-        components: [DiscordTools.getTrademarkButton(instance.generalSettings.showTrademark)],
+        components: [DiscordTools.getTrademarkSelectMenu(instance.generalSettings.trademark)],
         files: [new MessageAttachment('src/resources/images/settings_logo.png')]
     });
 
@@ -90,9 +90,11 @@ async function setupGeneralSettings(client, instance, channel) {
     await client.messageSend(channel, {
         embeds: [new MessageEmbed()
             .setColor('#861c0c')
-            .setTitle('Should the map be updated in the information channel?')
+            .setTitle('When should the Battlemetrics trackers notify?')
             .setThumbnail(`attachment://settings_logo.png`)],
-        components: [DiscordTools.getUpdateMapInformationButton(instance.generalSettings.updateMapInformation)],
+        components: [DiscordTools.getTrackerNotifyButtons(
+            instance.generalSettings.trackerNotifyAllOffline,
+            instance.generalSettings.trackerNotifyAnyOnline)],
         files: [new MessageAttachment('src/resources/images/settings_logo.png')]
     });
 }

@@ -1,3 +1,5 @@
+const BattlemetricsTrackerHandler = require('../handlers/battlemetricsTrackerHandler.js');
+
 module.exports = {
     name: 'ready',
     once: true,
@@ -8,6 +10,12 @@ module.exports = {
         client.guilds.cache.forEach(async (guild) => {
             await client.setupGuild(guild);
         });
+
+        BattlemetricsTrackerHandler.handler(client);
+        client.battlemetricsIntervalId = setInterval(
+            BattlemetricsTrackerHandler.handler,
+            60000,
+            client);
 
         client.createRustplusInstancesFromConfig();
     },
