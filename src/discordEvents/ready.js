@@ -1,4 +1,4 @@
-const BattlemetricsTrackerHandler = require('../handlers/battlemetricsTrackerHandler.js');
+const BattlemetricsHandler = require('../handlers/battlemetricsHandler.js');
 
 module.exports = {
     name: 'ready',
@@ -11,9 +11,9 @@ module.exports = {
             await client.setupGuild(guild);
         });
 
-        BattlemetricsTrackerHandler.handler(client);
+        BattlemetricsHandler.handler(client);
         client.battlemetricsIntervalId = setInterval(
-            BattlemetricsTrackerHandler.handler,
+            BattlemetricsHandler.handler,
             60000,
             client);
 

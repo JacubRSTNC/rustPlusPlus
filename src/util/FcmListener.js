@@ -9,7 +9,7 @@ module.exports = async (client, guild) => {
     let credentials = client.readCredentialsFile(guild.id);
 
     if (credentials.credentials === null) {
-        client.log(`Credentials is not set for guild: ${guild.id}, cannot start FCM-listener.`);
+        client.log('WARNING', `Credentials is not set for guild: ${guild.id}, cannot start FCM-listener.`);
         return;
     }
 
@@ -258,6 +258,7 @@ async function pairingEntityStorageMonitor(client, guild, full, data, body) {
         id: entityId,
         type: null,
         decaying: false,
+        upkeep: null,
         everyone: false,
         inGame: true,
         image: 'storage_monitor.png',

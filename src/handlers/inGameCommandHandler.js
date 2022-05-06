@@ -5,7 +5,6 @@ const Map = require('../util/map.js');
 const Constants = require('../util/constants.js');
 const TeamHandler = require('../handlers/teamHandler.js');
 const SmartSwitchGroupHandler = require('./smartSwitchGroupHandler.js');
-const string = require('../util/string.js');
 
 module.exports = {
     inGameCommandHandler: async function (rustplus, client, message) {
@@ -56,6 +55,9 @@ module.exports = {
         else if (command === `${rustplus.generalSettings.prefix}online`) {
             module.exports.commandOnline(rustplus);
         }
+        else if (command.startsWith(`${rustplus.generalSettings.prefix}player`)) {
+            module.exports.commandPlayer(rustplus, client, message);
+        }
         else if (command === `${rustplus.generalSettings.prefix}pop`) {
             module.exports.commandPop(rustplus);
         }
@@ -71,8 +73,14 @@ module.exports = {
         else if (command.startsWith(`${rustplus.generalSettings.prefix}timer `)) {
             module.exports.commandTimer(rustplus, command);
         }
+        else if (command.startsWith(`${rustplus.generalSettings.prefix}tts `)) {
+            module.exports.commandTTS(rustplus, client, message);
+        }
         else if (command === `${rustplus.generalSettings.prefix}unmute`) {
             module.exports.commandUnmute(rustplus, client);
+        }
+        else if (command === `${rustplus.generalSettings.prefix}upkeep`) {
+            module.exports.commandUpkeep(rustplus, client);
         }
         else if (command === `${rustplus.generalSettings.prefix}wipe`) {
             module.exports.commandWipe(rustplus);
@@ -176,12 +184,11 @@ module.exports = {
                     else if (command === `${cmd}`) {
                         /* Get switch info, create message */
                         var switchStatus = content.switches.map(switchId => {
-                            const {active, name} = instance.switches[switchId];
-                            return {active, name}
+                            const { active, name } = instance.switches[switchId];
+                            return { active, name }
                         });
-                        const statusMessage = switchStatus.map(status => 
-                            `${status.name}: ${status.active ? 'ON' : 'OFF'}
-                        `).join(', ');
+                        const statusMessage = switchStatus.map(status =>
+                            `${status.name}: ${status.active ? 'ON' : 'OFF'}`).join(', ');
                         rustplus.printCommandOutput(`Status: ${statusMessage}`);
                     }
                     else {
@@ -672,6 +679,77 @@ module.exports = {
         rustplus.printCommandOutput(str);
     },
 
+    commandPlayer: function (rustplus, client, message) {
+        let instance = client.readInstanceFile(rustplus.guildId);
+        const battlemetricsId = instance.serverList[rustplus.serverId].battlemetricsId;
+        let command = message.broadcast.teamMessage.message.message;
+        let nameSearch = '';
+
+        if (battlemetricsId === null) {
+            rustplus.printCommandOutput('This server is using streamer mode.');
+            return;
+        }
+
+        if (!Object.keys(client.battlemetricsOnlinePlayers).includes(battlemetricsId)) {
+            rustplus.printCommandOutput('Could not find players for this server.');
+            return;
+        }
+
+        let foundPlayers = [];
+        if (command === `${rustplus.generalSettings.prefix}players`) {
+            foundPlayers = client.battlemetricsOnlinePlayers[battlemetricsId].slice();
+        }
+        else if (command.startsWith(`${rustplus.generalSettings.prefix}player `)) {
+            nameSearch = command.replace(`${rustplus.generalSettings.prefix}player `, '');
+
+            for (let player of client.battlemetricsOnlinePlayers[battlemetricsId]) {
+                if (player.name.includes(nameSearch)) {
+                    foundPlayers.push(player);
+                }
+            }
+        }
+
+        let allPlayersLength = foundPlayers.length;
+        let messageMaxLength = Constants.MAX_LENGTH_TEAM_MESSAGE - rustplus.trademarkString.length;
+        let leftLength = `...xxx more.`.length;
+        let str = '';
+
+        let playerIndex = 0;
+        for (let player of foundPlayers) {
+            let playerStr = `${player.name} [${player.time}], `;
+
+            if ((str.length + playerStr.length + leftLength) < messageMaxLength) {
+                str += playerStr;
+            }
+            else if ((str.length + playerStr.length + leftLength) > messageMaxLength) {
+                break;
+            }
+
+            playerIndex += 1;
+        }
+
+        if (str !== '') {
+            str = str.slice(0, -2);
+
+            if (playerIndex < allPlayersLength) {
+                str += ` ...${allPlayersLength - playerIndex} more.`;
+            }
+            else {
+                str += '.';
+            }
+        }
+        else {
+            if (command === `${rustplus.generalSettings.prefix}players`) {
+                str = 'Could not find any players.';
+            }
+            else {
+                str = `Could not find a player '${nameSearch}'.`;
+            }
+        }
+
+        rustplus.printCommandOutput(str);
+    },
+
     commandPop: function (rustplus) {
         let str = `Population: (${rustplus.info.players}/${rustplus.info.maxPlayers}) players`;
         if (rustplus.info.queuedPlayers !== 0) {
@@ -898,6 +976,20 @@ module.exports = {
         }
     },
 
+    commandTTS: async function (rustplus, client, message) {
+        let instance = client.readInstanceFile(rustplus.guildId);
+        let channel = DiscordTools.getTextChannelById(rustplus.guildId, instance.channelId.teamchat);
+        let command = message.broadcast.teamMessage.message.message;
+        let text = command.replace(`${rustplus.generalSettings.prefix}tts `, '');
+
+        if (channel !== undefined) {
+            await client.messageSend(channel, {
+                content: `${message.broadcast.teamMessage.message.name} said: ${text}`,
+                tts: true
+            });
+        }
+    },
+
     commandUnmute: function (rustplus, client) {
         let instance = client.readInstanceFile(rustplus.guildId);
         rustplus.generalSettings.muteInGameBotMessages = false;
@@ -906,6 +998,20 @@ module.exports = {
 
         let str = `In-Game chat unmuted.`;
         rustplus.printCommandOutput(str);
+    },
+
+    commandUpkeep: function (rustplus, client) {
+        let instance = client.readInstanceFile(rustplus.guildId);
+
+        for (const [key, value] of Object.entries(instance.storageMonitors)) {
+            if (rustplus.serverId !== `${value.serverId}`) continue;
+            if (value.type !== 'toolcupboard') continue;
+
+            if (value.upkeep !== null) {
+                rustplus.printCommandOutput(
+                    `${value.name} [${key}] upkeep: ${value.upkeep}`);
+            }
+        }
     },
 
     commandWipe: function (rustplus) {
