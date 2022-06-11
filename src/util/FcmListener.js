@@ -173,7 +173,12 @@ async function pairingServer(client, guild, full, data, body) {
         switchGroups: {},
         messageId: (message !== undefined) ? message.id : null,
         battlemetricsId: battlemetricsId,
-        connect: (info === null) ? info : `connect ${info.ip}:${info.port}`
+        connect: (info === null) ? info : `connect ${info.ip}:${info.port}`,
+        cargoShipEgressTimeMs: Constants.DEFAULT_CARGO_SHIP_EGRESS_TIME_MS,
+        bradleyApcRespawnTimeMs: Constants.DEFAULT_BRADLEY_APC_RESPAWN_TIME_MS,
+        lockedCrateDespawnTimeMs: Constants.DEFAULT_LOCKED_CRATE_DESPAWN_TIME_MS,
+        lockedCrateDespawnWarningTimeMs: Constants.DEFAULT_LOCKED_CRATE_DESPAWN_WARNING_TIME_MS,
+        oilRigLockedCrateUnlockTimeMs: Constants.DEFAULT_OIL_RIG_LOCKED_CRATE_UNLOCK_TIME_MS
     };
     client.writeInstanceFile(guild.id, instance);
 
@@ -189,6 +194,7 @@ async function pairingEntitySwitch(client, guild, full, data, body) {
 
     instance.switches[entityId] = {
         active: false,
+        reachable: true,
         name: 'Smart Switch',
         command: entityId,
         image: 'smart_switch.png',
@@ -203,10 +209,15 @@ async function pairingEntitySwitch(client, guild, full, data, body) {
 
     if (serverId === rustplus.serverId) {
         let info = await rustplus.getEntityInfoAsync(entityId);
-        if (!(await rustplus.isResponseValid(info))) return;
+        if (!(await rustplus.isResponseValid(info))) {
+            instance.switches[entityId].reachable = false;
+            client.writeInstanceFile(guild.id, instance);
+        }
 
-        instance.switches[entityId].active = info.entityInfo.payload.value;
-        client.writeInstanceFile(guild.id, instance);
+        if (instance.switches[entityId].reachable) {
+            instance.switches[entityId].active = info.entityInfo.payload.value;
+            client.writeInstanceFile(guild.id, instance);
+        }
 
         await DiscordTools.sendSmartSwitchMessage(guild.id, entityId);
     }
@@ -221,6 +232,7 @@ async function pairingEntitySmartAlarm(client, guild, full, data, body) {
 
     instance.alarms[entityId] = {
         active: false,
+        reachable: true,
         everyone: false,
         name: 'Smart Alarm',
         message: 'Your base is under attack!',
@@ -237,10 +249,15 @@ async function pairingEntitySmartAlarm(client, guild, full, data, body) {
 
     if (serverId === rustplus.serverId) {
         let info = await rustplus.getEntityInfoAsync(entityId);
-        if (!(await rustplus.isResponseValid(info))) return;
+        if (!(await rustplus.isResponseValid(info))) {
+            instance.alarms[entityId].reachable = false;
+            client.writeInstanceFile(guild.id, instance);
+        }
 
-        instance.alarms[entityId].active = info.entityInfo.payload.value;
-        client.writeInstanceFile(guild.id, instance);
+        if (instance.alarms[entityId].reachable) {
+            instance.alarms[entityId].active = info.entityInfo.payload.value;
+            client.writeInstanceFile(guild.id, instance);
+        }
     }
 
     await DiscordTools.sendSmartAlarmMessage(guild.id, entityId);
@@ -255,8 +272,9 @@ async function pairingEntityStorageMonitor(client, guild, full, data, body) {
 
     instance.storageMonitors[entityId] = {
         name: 'Storage Monitor',
+        reachable: true,
         id: entityId,
-        type: null,
+        type: 'container',
         decaying: false,
         upkeep: null,
         everyone: false,
@@ -272,9 +290,12 @@ async function pairingEntityStorageMonitor(client, guild, full, data, body) {
 
     if (serverId === rustplus.serverId) {
         let info = await rustplus.getEntityInfoAsync(entityId);
-        if (!(await rustplus.isResponseValid(info))) return;
+        if (!(await rustplus.isResponseValid(info))) {
+            instance.storageMonitors[entityId].reachable = false;
+            client.writeInstanceFile(guild.id, instance);
+        }
 
-        if (info.entityInfo.payload.capacity !== 0) {
+        if (instance.storageMonitors[entityId].reachable) {
             if (info.entityInfo.payload.capacity === 28) {
                 instance.storageMonitors[entityId].type = 'toolcupboard';
                 instance.storageMonitors[entityId].image = 'tool_cupboard.png';
@@ -282,17 +303,14 @@ async function pairingEntityStorageMonitor(client, guild, full, data, body) {
                     instance.storageMonitors[entityId].decaying = true;
                 }
             }
-            else {
-                instance.storageMonitors[entityId].type = 'container';
-            }
             client.writeInstanceFile(guild.id, instance);
-        }
 
-        rustplus.storageMonitors[entityId] = {
-            items: info.entityInfo.payload.items,
-            expiry: info.entityInfo.payload.protectionExpiry,
-            capacity: info.entityInfo.payload.capacity,
-            hasProtection: info.entityInfo.payload.hasProtection
+            rustplus.storageMonitors[entityId] = {
+                items: info.entityInfo.payload.items,
+                expiry: info.entityInfo.payload.protectionExpiry,
+                capacity: info.entityInfo.payload.capacity,
+                hasProtection: info.entityInfo.payload.hasProtection
+            }
         }
 
         await DiscordTools.sendStorageMonitorMessage(guild.id, entityId);

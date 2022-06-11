@@ -30,10 +30,10 @@ module.exports = {
 		.addSubcommand(subcommand =>
 			subcommand
 				.setName('recycle')
-				.setDescription('Calculate the resources gained from recycling the content of a storage monitor.')
+				.setDescription('Calculate the resources gained from recycling the content of a Storage Monitor.')
 				.addStringOption(option =>
 					option.setName('id')
-						.setDescription('The ID of the storage Monitor.')
+						.setDescription('The ID of the Storage Monitor.')
 						.setRequired(true))),
 
 	async execute(client, interaction) {
@@ -160,6 +160,9 @@ module.exports = {
 
 				let entityInfo = await rustplus.getEntityInfoAsync(id);
 				if (!(await rustplus.isResponseValid(entityInfo))) {
+					instance.storageMonitors[id].reachable = false;
+					client.writeInstanceFile(interaction.guildId, instance);
+
 					let str = `Could not get items from Storage Monitor: ${id}`;
 					await client.interactionEditReply(interaction, {
 						embeds: [new MessageEmbed()
@@ -169,8 +172,12 @@ module.exports = {
 						ephemeral: true
 					});
 					rustplus.log('WARNING', str);
+
+					await DiscordTools.sendStorageMonitorMessage(rustplus.guildId, id);
 					return;
 				}
+				instance.storageMonitors[id].reachable = true;
+				client.writeInstanceFile(interaction.guildId, instance);
 
 				let items = Recycler.calculate(entityInfo.entityInfo.payload.items);
 
