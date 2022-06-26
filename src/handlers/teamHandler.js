@@ -38,7 +38,7 @@ module.exports = {
                     .setFooter({ text: instance.serverList[rustplus.serverId].title })
                 ]
             });
-            rustplus.sendTeamMessage(`${player.name} left the team.`);
+            rustplus.sendTeamMessageAsync(`${player.name} left the team.`);
         }
 
         for (let steamId of newPlayers) {
@@ -57,7 +57,7 @@ module.exports = {
                             .setFooter({ text: instance.serverList[rustplus.serverId].title })
                         ]
                     });
-                    rustplus.sendTeamMessage(`${player.name} joined the team.`);
+                    rustplus.sendTeamMessageAsync(`${player.name} joined the team.`);
                 }
             }
         }
@@ -83,7 +83,7 @@ module.exports = {
                                 .setFooter({ text: instance.serverList[rustplus.serverId].title })
                             ]
                         });
-                        rustplus.sendTeamMessage(`${player.name} just connected.`);
+                        rustplus.sendTeamMessageAsync(`${player.name} just connected.`);
                     }
 
                     if (player.isGoneOffline(playerUpdated)) {
@@ -100,7 +100,7 @@ module.exports = {
                                 .setFooter({ text: instance.serverList[rustplus.serverId].title })
                             ]
                         });
-                        rustplus.sendTeamMessage(`${player.name} just disconnected.`);
+                        rustplus.sendTeamMessageAsync(`${player.name} just disconnected.`);
                     }
 
                     if (!player.isOnline && !playerUpdated.isOnline && player.isGoneDead(playerUpdated)) {
@@ -137,7 +137,7 @@ module.exports = {
                                 })
                             ]
                         });
-                        rustplus.sendTeamMessage(`${player.name} just got killed whilst AFK at ${pos}.`);
+                        rustplus.sendTeamMessageAsync(`${player.name} just got killed whilst AFK at ${pos}.`);
                     }
                     break;
                 }
