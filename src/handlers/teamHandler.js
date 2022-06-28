@@ -118,7 +118,7 @@ module.exports = {
                                 .setFooter({ text: instance.serverList[rustplus.serverId].title })
                             ]
                         });
-                        rustplus.sendTeamMessage(`${player.name} just got offline killed at ${pos}.`);
+                        rustplus.sendTeamMessageAsync(`${player.name} just got offline killed at ${pos}.`);
                     }
                     if (player.isOnline && playerUpdated.isOnline && player.getAfkSeconds() >= 300 && player.isGoneDead(playerUpdated)) {
                         let png = await Scrape.scrapeSteamProfilePicture(rustplus, player.steamId);
