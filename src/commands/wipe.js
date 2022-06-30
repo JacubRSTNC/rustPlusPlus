@@ -20,7 +20,7 @@ module.exports = {
 			client.log('WARNING', str);
 			return;
 		}
-        await interaction.editReply(rustplus.info.getTimeSinceWipe());
+        await interaction.editReply(`${rustplus.info.getTimeSinceWipe()} since wipe.`);
 		client.log('INFO', 'Displaying wipe message.');
 	},
 };
