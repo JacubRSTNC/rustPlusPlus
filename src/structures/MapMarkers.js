@@ -361,7 +361,6 @@ class MapMarkers {
                     this.bradleyAPCRespawnTimers[marker.id] = new Timer.timer(
                         this.notifyBradleyAPCRespawn.bind(this),
                         instance.serverList[this.rustplus.serverId].bradleyApcRespawnTimeMs,
-                        Constants.DEFAULT_BRADLEY_APC_RESPAWN_TIME_MS,
                         marker.id);
                     this.bradleyAPCRespawnTimers[marker.id].start();
                 }
@@ -807,7 +806,8 @@ class MapMarkers {
 
                 marker.crateType = 'large_oil_rig';
             }
-            else if (distance > this.rustplus.map.monumentInfo[closestMonument.token].radius) {
+            else if (!(closestMonument.token in this.rustplus.map.monumentInfo) ||
+                distance > this.rustplus.map.monumentInfo[closestMonument.token].radius) {
                 if (!Map.isOutsideGridSystem(marker.x, marker.y, mapSize)) {
                     if (!this.rustplus.firstPoll) {
                         this.rustplus.sendEvent(
