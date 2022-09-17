@@ -7,11 +7,21 @@
 <a href="https://www.reddit.com/user/Alexemanuelol"><img src="https://img.shields.io/badge/Reddit-Alexemanuelol-FF4500?style=flat&logo=reddit" alt="reddit"/></a>
 <a href="https://ko-fi.com/alexemanuelol"><img src="https://img.shields.io/badge/Donate%20a%20Coffee-alexemanuelol-yellow?style=flat&logo=buy-me-a-coffee" alt="donate on ko-fi"/></a>
 
-<h1 align="center"><em><b>rustPlusPlus</b> ~~~ Rust+ Discord Bot</em></h1>
+<p align="center">
+    <a href="https://discord.gg/vcrKbKVAbc">
+        <img src="./join_discord.png" width="250">
+    </a>
+</p>
+
+<h1 align="center"><em><b>rustPlusPlus</b> ~ Rust+ Discord Bot</em></h1>
 </p>
 
 A NodeJS Discord Bot that uses the [rustplus.js](https://github.com/liamcottle/rustplus.js) library to utilize the power of the [Rust+ Companion App](https://rust.facepunch.com/companion) with additional Quality-of-Life features.
 
+
+## **How-to Setup Video**
+
+[![Image of setup video](https://www.youtube.com/s/desktop/4a88d8c6/img/favicon_144x144.png)](https://www.youtube.com/watch?v=xqcqXcWypEo)
 
 ## **Features**
 
@@ -39,7 +49,7 @@ A NodeJS Discord Bot that uses the [rustplus.js](https://github.com/liamcottle/r
 
 > To run the bot, simply open the terminal of your choice and run the following from repository root:
 
-    $ node .
+    $ npm start run
 
 
 ## **How to update the repository**

@@ -1,3 +1,5 @@
+const Path = require('path');
+
 const BattlemetricsHandler = require('../handlers/battlemetricsHandler.js');
 
 module.exports = {
@@ -12,10 +14,7 @@ module.exports = {
         });
 
         BattlemetricsHandler.handler(client);
-        client.battlemetricsIntervalId = setInterval(
-            BattlemetricsHandler.handler,
-            60000,
-            client);
+        client.battlemetricsIntervalId = setInterval(BattlemetricsHandler.handler, 60000, client);
 
         client.createRustplusInstancesFromConfig();
     },

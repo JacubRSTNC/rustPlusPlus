@@ -1,55 +1,55 @@
-const DiscordTools = require('../discordTools/discordTools.js');
 const BattlemetricsAPI = require('../util/battlemetricsAPI.js');
+const DiscordMessages = require('../discordTools/discordMessages.js');
 const Scrape = require('../util/scrape.js');
 
 module.exports = {
     handler: async function (client) {
-        let forceSearch = (client.battlemetricsIntervalCounter === 0) ? true : false;
+        const forceSearch = (client.battlemetricsIntervalCounter === 0) ? true : false;
 
-        let calledPages = new Object();
-        let calledSteamIdNames = new Object();
+        const calledPages = new Object();
+        const calledSteamIdNames = new Object();
 
-        for (let guildItem of client.guilds.cache) {
-            let guild = guildItem[1];
+        for (const guildItem of client.guilds.cache) {
+            const guild = guildItem[1];
             let instance = client.readInstanceFile(guild.id);
-            let activeServer = getActiveServerId(instance.serverList);
+            const activeServer = getActiveServerId(instance.serverList);
 
             if (activeServer !== null && instance.serverList[activeServer].battlemetricsId !== null) {
                 let battlemetricsId = instance.serverList[activeServer].battlemetricsId;
                 if (!Object.keys(calledPages).includes(battlemetricsId)) {
-                    let page = await BattlemetricsAPI.getBattlemetricsServerPage(client, battlemetricsId);
+                    const page = await BattlemetricsAPI.getBattlemetricsServerPage(client, battlemetricsId);
                     if (page !== null) {
                         calledPages[battlemetricsId] = page;
                     }
                 }
             }
 
-            for (const [key, value] of Object.entries(instance.trackers)) {
-                if (!value.active) continue;
+            for (const [trackerId, content] of Object.entries(instance.trackers)) {
+                if (!content.active) continue;
                 instance = client.readInstanceFile(guild.id);
 
                 let page = null;
-                if (!Object.keys(calledPages).includes(value.battlemetricsId)) {
-                    page = await BattlemetricsAPI.getBattlemetricsServerPage(client, value.battlemetricsId);
+                if (!Object.keys(calledPages).includes(content.battlemetricsId)) {
+                    page = await BattlemetricsAPI.getBattlemetricsServerPage(client, content.battlemetricsId);
                     if (page === null) continue;
-                    calledPages[value.battlemetricsId] = page;
+                    calledPages[content.battlemetricsId] = page;
                 }
                 else {
-                    page = calledPages[value.battlemetricsId];
+                    page = calledPages[content.battlemetricsId];
                 }
 
-                let info = await BattlemetricsAPI.getBattlemetricsServerInfo(
-                    client, value.battlemetricsId, page);
+                const info = await BattlemetricsAPI.getBattlemetricsServerInfo(
+                    client, content.battlemetricsId, page);
                 if (info === null) continue;
 
-                instance.trackers[key].status = info.status;
+                instance.trackers[trackerId].status = info.status;
 
-                let onlinePlayers = await BattlemetricsAPI.getBattlemetricsServerOnlinePlayers(
-                    client, value.battlemetricsId, page);
+                const onlinePlayers = await BattlemetricsAPI.getBattlemetricsServerOnlinePlayers(
+                    client, content.battlemetricsId, page);
                 if (onlinePlayers === null) continue;
 
-                for (let player of value.players) {
-                    player = instance.trackers[key].players.find(e => e.steamId === player.steamId);
+                for (let player of content.players) {
+                    player = instance.trackers[trackerId].players.find(e => e.steamId === player.steamId);
                     let onlinePlayer = onlinePlayers.find(e => e.name === player.name);
                     if (onlinePlayer) {
                         player.status = true;
@@ -89,26 +89,26 @@ module.exports = {
                 instance = client.readInstanceFile(guild.id);
 
                 let allOffline = true;
-                for (let player of instance.trackers[key].players) {
+                for (const player of instance.trackers[trackerId].players) {
                     if (player.status) {
                         allOffline = false;
                     }
                 }
 
-                if (!instance.trackers[key].allOffline && allOffline) {
+                if (!instance.trackers[trackerId].allOffline && allOffline) {
                     if (instance.generalSettings.trackerNotifyAllOffline) {
-                        await DiscordTools.sendTrackerAllOffline(guild.id, key);
+                        await DiscordMessages.sendTrackerAllOfflineMessage(guild.id, trackerId);
                     }
                 }
-                else if (instance.trackers[key].allOffline && !allOffline) {
+                else if (instance.trackers[trackerId].allOffline && !allOffline) {
                     if (instance.generalSettings.trackerNotifyAnyOnline) {
-                        await DiscordTools.sendTrackerAnyOnline(guild.id, key);
+                        await DiscordMessages.sendTrackerAnyOnlineMessage(guild.id, trackerId);
                     }
                 }
 
-                instance.trackers[key].allOffline = allOffline;
+                instance.trackers[trackerId].allOffline = allOffline;
                 client.writeInstanceFile(guild.id, instance);
-                await DiscordTools.sendTrackerMessage(guild.id, key, true, false);
+                await DiscordMessages.sendTrackerMessage(guild.id, trackerId);
             }
         }
 

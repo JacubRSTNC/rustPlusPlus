@@ -1,91 +1,83 @@
-const fs = require('fs');
-const RP = require('rustplus.js');
-const Client = require('../../index.js');
-const { MessageEmbed, MessageAttachment } = require('discord.js');
-const Logger = require('./Logger.js');
-const path = require('path');
-const DiscordTools = require('../discordTools/discordTools.js');
+const Fs = require('fs');
+const RustPlusLib = require('@liamcottle/rustplus.js');
+const Path = require('path');
+
+const Client = require('../../index.ts');
 const Constants = require('../util/constants.js');
-const Items = require('./Items');
+const DiscordMessages = require('../discordTools/discordMessages.js');
+const Logger = require('./Logger.js');
 const Timer = require('../util/timer.js');
 
-class RustPlus extends RP {
+const TOKENS_LIMIT = 24;        /* Per player */
+const TOKENS_REPLENISH = 3;     /* Per second */
+
+class RustPlus extends RustPlusLib {
     constructor(guildId, serverIp, appPort, steamId, playerToken) {
         super(serverIp, appPort, steamId, playerToken);
 
         this.serverId = `${this.server}-${this.port}`;
-
         this.guildId = guildId;
-        this.intervalId = 0;
-        this.logger = null;
-        this.firstPoll = true;
-        this.generalSettings = null;
-        this.notificationSettings = null;
-        this.deleted = false;
-        this.connected = false;
-        this.isReconnect = false;
-        this.refusedConnectionRetry = false;
-        this.firstTime = true;
-        this.ready = false;
 
-        this.storageMonitors = new Object();
+        /* Status flags */
+        this.isConnected = false;           /* Connected to the server, but request not yet verified. */
+        this.isReconnecting = false;        /* Trying to reconnect? */
+        this.isOperational = false;         /* Connected to the server, and request is verified. */
+        this.isDeleted = false;             /* Is the rustplus instance deleted? */
+        this.isConnectionRefused = false;   /* Refused connection when trying to connect? */
+        this.isNewConnection = false;       /* Is it an actively selected connection (pressed CONNECT button)? */
+        this.isFirstPoll = true;            /* Is this the first poll since connection started? */
 
-        this.map = null;
-        this.info = null;
-        this.time = null;
-        this.team = null;
-        this.mapMarkers = null;
+        /* Interval ids */
+        this.pollingTaskId = 0;             /* The id of the main polling mechanism of the rustplus instance. */
+        this.tokensReplenishTaskId = 0;     /* The id of the replenish task for rustplus tokens. */
 
-        this.items = new Items();
+        /* Other variable initializations */
+        this.tokens = 24;                           /* The amount of tokens that is available at start. */
+        this.timers = new Object();                 /* Stores all custom timers that are created. */
+        this.markers = new Object();                /* Stores all custom markers that are created. */
+        this.storageMonitors = new Object();        /* Contain content information of paired storage monitors. */
+        this.currentSwitchTimeouts = new Object();  /* Stores timer ids for auto ON/OFF Smart Switch timeouts. */
+        this.passedFirstSunriseOrSunset = false;    /* Becomes true when first sunrise/sunset. */
+        this.startTimeObject = new Object();        /* Stores in-game time points before first sunrise/sunset. */
+        this.informationIntervalCounter = 0;        /* Counter to decide when information should be updated. */
+        this.storageMonitorIntervalCounter = 0;     /* Counter to decide when storage monitors should be updated */
+        this.smartSwitchIntervalCounter = 10;       /* Counter to decide when smart switches should be updated */
+        this.smartAlarmIntervalCounter = 20;        /* Counter to decide when smart alarms should be updated */
+        this.interactionSwitches = [];              /* Stores the ids of smart switches that are interacted in-game. */
 
-        let instance = Client.client.readInstanceFile(guildId);
-        this.trademarkString = (instance.generalSettings.trademark === 'NOT SHOWING') ?
-            '' : `${instance.generalSettings.trademark} | `;
+        /* Rustplus structures */
+        this.map = null;            /* Stores the Map structure. */
+        this.info = null;           /* Stores the Info structure. */
+        this.time = null;           /* Stores the Time structure. */
+        this.team = null;           /* Stores the Team structure. */
+        this.mapMarkers = null;     /* Stores the MapMarkers structure. */
 
-        this.oldsendTeamMessageAsync = this.sendTeamMessageAsync;
+        /* Retrieve the trademark string */
+        const instance = Client.client.readInstanceFile(guildId);
+        const trademark = instance.generalSettings.trademark;
+        this.trademarkString = (trademark === 'NOT SHOWING') ? '' : `${trademark} | `;
+
+        /* Modify sendTeamMessageAsync function to allow trademark and splitting messages. */
+        this.oldSendTeamMessageAsync = this.sendTeamMessageAsync;
         this.sendTeamMessageAsync = async function (message) {
-            let messageMaxLength = Constants.MAX_LENGTH_TEAM_MESSAGE - this.trademarkString.length;
-            let strings = message.match(new RegExp(`.{1,${messageMaxLength}}(\\s|$)`, 'g'));
+            const messageMaxLength = Constants.MAX_LENGTH_TEAM_MESSAGE - this.trademarkString.length;
+            const strings = message.match(new RegExp(`.{1,${messageMaxLength}}(\\s|$)`, 'g'));
 
-            if (this.team === null || this.team.allOffline) {
-                return;
-            }
+            if (this.team === null || this.team.allOffline) return;
 
-            for (let msg of strings) {
+            for (const msg of strings) {
                 if (!this.generalSettings.muteInGameBotMessages) {
-                    await this.oldsendTeamMessageAsync(`${this.trademarkString}${msg}`);
+                    await this.oldSendTeamMessageAsync(`${this.trademarkString}${msg}`);
                 }
             }
         }
 
-        /* Event timers */
-        this.timers = new Object();
-
-        /* Time variables */
-        this.passedFirstSunriseOrSunset = false;
-        this.startTimeObject = new Object();
-
-        this.markers = new Object();
-
-        this.informationIntervalCounter = 0;
-        this.storageMonitorIntervalCounter = 0;
-        this.smartSwitchIntervalCounter = 10;
-        this.smartAlarmIntervalCounter = 20;
-
-        this.interactionSwitches = [];
-
-        /* Load rustplus events */
-        this.loadEvents();
-
-        this.tokens = 24;
-        this.tokens_limit = 24;     /* Per player */
-        this.tokens_replenish = 3;  /* Per second */
-        this.tokens_replenish_task = 0;
+        this.loadRustPlusEvents();
     }
 
-    loadEvents() {
-        /* Dynamically retrieve the rustplus event files */
-        const eventFiles = fs.readdirSync(`${__dirname}/../rustplusEvents`).filter(file => file.endsWith('.js'));
+    loadRustPlusEvents() {
+        const eventFiles = Fs.readdirSync(
+            Path.join(__dirname, '..', 'rustplusEvents')).filter(file => file.endsWith('.js'));
         for (const file of eventFiles) {
             const event = require(`../rustplusEvents/${file}`);
             this.on(event.name, (...args) => event.execute(this, Client.client, ...args));
@@ -93,26 +85,20 @@ class RustPlus extends RP {
     }
 
     loadMarkers() {
-        let instance = Client.client.readInstanceFile(this.guildId);
-        let server = `${this.server}-${this.port}`;
+        const instance = Client.client.readInstanceFile(this.guildId);
 
-        if (!instance.markers.hasOwnProperty(server)) {
-            instance.markers[server] = {};
-            Client.client.writeInstanceFile(this.guildId, instance);
-        }
-
-        for (const [name, location] of Object.entries(instance.markers[server])) {
+        for (const [name, location] of Object.entries(instance.serverList[this.serverId].markers)) {
             this.markers[name] = { x: location.x, y: location.y };
         }
     }
 
     build() {
-        let instance = Client.client.readInstanceFile(this.guildId);
+        const instance = Client.client.readInstanceFile(this.guildId);
 
         /* Setup the logger */
-        this.logger = new Logger(path.join(__dirname, '..', `logs/${this.guildId}.log`), 'guild');
+        this.logger = new Logger(Path.join(__dirname, '..', `logs/${this.guildId}.log`), 'guild');
         this.logger.setGuildId(this.guildId);
-        this.logger.serverName = instance.serverList[`${this.server}-${this.port}`].title;
+        this.logger.serverName = instance.serverList[this.serverId].title;
 
         /* Setup settings */
         this.generalSettings = instance.generalSettings;
@@ -121,20 +107,47 @@ class RustPlus extends RP {
         this.connect();
     }
 
+    isServerAvailable() {
+        const instance = Client.client.readInstanceFile(this.guildId);
+        return instance.serverList.hasOwnProperty(this.serverId);
+    }
+
+    deleteThisRustplusInstance() {
+        this.isDeleted = true;
+
+        if (Client.client.rustplusInstances.hasOwnProperty(this.guildId)) {
+            if (Client.client.rustplusInstances[this.guildId].serverId === this.serverId) {
+                this.disconnect();
+                delete Client.client.rustplusInstances[this.guildId];
+                return true;
+            }
+        }
+        return false;
+    }
+
     log(title, text, level = 'info') {
         this.logger.log(title, text, level);
     }
 
     async printCommandOutput(str, type = 'COMMAND') {
-        await this.sendTeamMessageAsync(str);
+        if (this.generalSettings.commandDelay === '0') {
+            await this.sendTeamMessageAsync(str);
+        }
+        else {
+            const self = this;
+            setTimeout(function () {
+                self.sendTeamMessageAsync(str);
+            }, parseInt(this.generalSettings.commandDelay) * 1000)
+
+        }
         this.log(type, str);
     }
 
     async sendEvent(setting, text, firstPoll = false, image = null) {
-        let img = (image !== null) ? image : setting.image;
+        const img = (image !== null) ? image : setting.image;
 
         if (!firstPoll && setting.discord) {
-            this.sendDiscordEvent(text, img)
+            await DiscordMessages.sendDiscordEventMessage(this.guildId, this.serverId, text, img);
         }
         if (!firstPoll && setting.inGame) {
             await this.sendTeamMessageAsync(`${text}`);
@@ -142,30 +155,9 @@ class RustPlus extends RP {
         this.log('EVENT', text);
     }
 
-    sendDiscordEvent(text, image) {
-        let instance = Client.client.readInstanceFile(this.guildId);
-        let channel = DiscordTools.getTextChannelById(this.guildId, instance.channelId.events);
-
-        if (channel !== undefined) {
-            let file = new MessageAttachment(`src/resources/images/events/${image}`);
-            let embed = new MessageEmbed()
-                .setColor('#ce412b')
-                .setThumbnail(`attachment://${image}`)
-                .setTitle(text)
-                .setFooter({
-                    text: instance.serverList[`${this.server}-${this.port}`].title
-                })
-                .setTimestamp();
-
-            Client.client.messageSend(channel, { embeds: [embed], files: [file] });
-        }
-    }
-
-    replenish_tokens() {
-        this.tokens += this.tokens_replenish;
-        if (this.tokens > this.tokens_limit) {
-            this.tokens = this.tokens_limit;
-        }
+    replenishTokens() {
+        this.tokens += TOKENS_REPLENISH;
+        if (this.tokens > TOKENS_LIMIT) this.tokens = TOKENS_LIMIT;
     }
 
     async waitForAvailableTokens(cost) {
@@ -173,7 +165,7 @@ class RustPlus extends RP {
         while (this.tokens < cost) {
             if (timeoutCounter === 90) return false;
 
-            await Timer.sleep(333);
+            await Timer.sleep(1000 / 3);
             timeoutCounter += 1;
         }
         this.tokens -= cost;
@@ -458,7 +450,7 @@ class RustPlus extends RP {
         }
         else if (Object.keys(response).length === 0) {
             this.log('ERROR', 'Response is empty.', 'error');
-            clearInterval(this.intervalId);
+            clearInterval(this.pollingTaskId);
             return false;
         }
         return true;

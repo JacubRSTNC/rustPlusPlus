@@ -283,7 +283,7 @@ class MapMarkers {
         /* Player markers that are new. */
         for (let marker of newMarkers) {
             let mapSize = this.rustplus.info.correctedMapSize;
-            let pos = Map.getPos(marker.x, marker.y, mapSize, true, this.rustplus);
+            let pos = Map.getPos(marker.x, marker.y, mapSize, this.rustplus);
 
             marker.location = pos;
 
@@ -298,7 +298,7 @@ class MapMarkers {
         /* Player markers that still remains. */
         for (let marker of remainingMarkers) {
             let mapSize = this.rustplus.info.correctedMapSize;
-            let pos = Map.getPos(marker.x, marker.y, mapSize, true, this.rustplus);
+            let pos = Map.getPos(marker.x, marker.y, mapSize, this.rustplus);
             let player = this.getMarkerByTypeId(this.types.Player, marker.id);
 
             player.x = marker.x;
@@ -315,7 +315,7 @@ class MapMarkers {
         /* Explosion markers that are new. */
         for (let marker of newMarkers) {
             let mapSize = this.rustplus.info.correctedMapSize;
-            let pos = Map.getPos(marker.x, marker.y, mapSize, true, this.rustplus);
+            let pos = Map.getPos(marker.x, marker.y, mapSize, this.rustplus);
 
             marker.location = pos;
 
@@ -335,7 +335,7 @@ class MapMarkers {
                 /* PatrolHelicopter just got downed */
                 this.rustplus.sendEvent(
                     this.rustplus.notificationSettings.patrolHelicopterDestroyed,
-                    `Patrol Helicopter was taken down ${pos}.`);
+                    `Patrol Helicopter was taken down ${pos.string}.`);
 
                 this.timeSincePatrolHelicopterWasDestroyed = new Date();
                 this.timeSincePatrolHelicopterWasOnMap = new Date();
@@ -343,21 +343,21 @@ class MapMarkers {
             else {
                 /* Bradley APC just got destroyed */
                 let atLaunch = this.isBradleyExplosionAtLaunchSite(marker.x, marker.y);
-                pos = (atLaunch) ? 'Launch Site' : pos;
+                let posString = (atLaunch) ? 'Launch Site' : pos.string;
 
-                if (this.rustplus.firstPoll) {
+                if (this.rustplus.isFirstPoll) {
                     this.rustplus.sendEvent(
                         this.rustplus.notificationSettings.bradleyApcDestroyed,
-                        `Bradley APC or Patrol Helicopter was destroyed at ${pos}.`);
+                        `Bradley APC or Patrol Helicopter was destroyed at ${posString}.`);
                 }
                 else {
                     this.rustplus.sendEvent(
                         this.rustplus.notificationSettings.bradleyApcDestroyed,
-                        `Bradley APC was destroyed at ${pos}.`);
+                        `Bradley APC was destroyed at ${posString}.`);
                 }
 
                 let instance = this.client.readInstanceFile(this.rustplus.guildId);
-                if (!this.rustplus.firstPoll) {
+                if (!this.rustplus.isFirstPoll) {
                     this.bradleyAPCRespawnTimers[marker.id] = new Timer.timer(
                         this.notifyBradleyAPCRespawn.bind(this),
                         instance.serverList[this.rustplus.serverId].bradleyApcRespawnTimeMs,
@@ -381,7 +381,7 @@ class MapMarkers {
         /* Explosion markers that still remains. */
         for (let marker of remainingMarkers) {
             let mapSize = this.rustplus.info.correctedMapSize;
-            let pos = Map.getPos(marker.x, marker.y, mapSize, true, this.rustplus);
+            let pos = Map.getPos(marker.x, marker.y, mapSize, this.rustplus);
             let explosion = this.getMarkerByTypeId(this.types.Explosion, marker.id);
 
             explosion.x = marker.x;
@@ -398,15 +398,15 @@ class MapMarkers {
         /* VendingMachine markers that are new. */
         for (let marker of newMarkers) {
             let mapSize = this.rustplus.info.correctedMapSize;
-            let pos = Map.getPos(marker.x, marker.y, mapSize, true, this.rustplus);
+            let pos = Map.getPos(marker.x, marker.y, mapSize, this.rustplus);
 
             marker.location = pos;
 
-            if (!this.rustplus.firstPoll) {
+            if (!this.rustplus.isFirstPoll) {
                 if (!this.knownVendingMachines.some(e => e.x === marker.x && e.y === marker.y)) {
                     this.rustplus.sendEvent(
                         this.rustplus.notificationSettings.vendingMachineDetected,
-                        `New Vending Machine located at ${pos}.`);
+                        `New Vending Machine located at ${pos.string}.`);
                 }
             }
 
@@ -422,7 +422,7 @@ class MapMarkers {
         /* VendingMachine markers that still remains. */
         for (let marker of remainingMarkers) {
             let mapSize = this.rustplus.info.correctedMapSize;
-            let pos = Map.getPos(marker.x, marker.y, mapSize, true, this.rustplus);
+            let pos = Map.getPos(marker.x, marker.y, mapSize, this.rustplus);
             let vendingMachine = this.getMarkerByTypeXY(this.types.VendingMachine, marker.x, marker.y);
 
             vendingMachine.id = marker.id;
@@ -432,7 +432,7 @@ class MapMarkers {
         let vendingMachines = this.getMarkersOfType(this.types.VendingMachine, mapMarkers.markers);
         for (let vendingMachine of vendingMachines) {
             let mapSize = this.rustplus.info.correctedMapSize;
-            let pos = Map.getPos(vendingMachine.x, vendingMachine.y, mapSize, true, this.rustplus);
+            let pos = Map.getPos(vendingMachine.x, vendingMachine.y, mapSize, this.rustplus);
 
             for (let order of vendingMachine.sellOrders) {
                 if (this.subscribedItemsId.includes(order.itemId) ||
@@ -444,19 +444,19 @@ class MapMarkers {
                             let item = '';
                             if (this.subscribedItemsId.includes(order.itemId) &&
                                 this.subscribedItemsId.includes(order.currencyId)) {
-                                item = this.rustplus.items.getName(order.itemId) + ' and ';
-                                item += this.rustplus.items.getName(order.currencyId);
+                                item = this.client.items.getName(order.itemId) + ' and ';
+                                item += this.client.items.getName(order.currencyId);
                             }
                             else if (this.subscribedItemsId.includes(order.itemId)) {
-                                item = this.rustplus.items.getName(order.itemId);
+                                item = this.client.items.getName(order.itemId);
                             }
                             else if (this.subscribedItemsId.includes(order.currencyId)) {
-                                item = this.rustplus.items.getName(order.currencyId);
+                                item = this.client.items.getName(order.currencyId);
                             }
 
                             this.rustplus.sendEvent(
                                 this.rustplus.notificationSettings.vendingMachineDetected,
-                                `${item} was found in a Vending Machine at ${pos}.`);
+                                `${item} was found in a Vending Machine at ${pos.string}.`);
                         }
                     }
                 }
@@ -472,7 +472,7 @@ class MapMarkers {
         /* CH47 markers that are new. */
         for (let marker of newMarkers) {
             let mapSize = this.rustplus.info.correctedMapSize;
-            let pos = Map.getPos(marker.x, marker.y, mapSize, true, this.rustplus);
+            let pos = Map.getPos(marker.x, marker.y, mapSize, this.rustplus);
 
             marker.location = pos;
 
@@ -487,18 +487,18 @@ class MapMarkers {
             }
 
             let found = false;
-            if (!this.rustplus.firstPoll) {
+            if (!this.rustplus.isFirstPoll) {
                 for (let oilRig of smallOilRig) {
                     if (Map.getDistance(marker.x, marker.y, oilRig.x, oilRig.y) <=
                         Constants.OIL_RIG_CHINOOK_47_MAX_SPAWN_DISTANCE) {
                         found = true;
-                        let oilRigLocation = Map.getPos(oilRig.x, oilRig.y, mapSize, true, this.rustplus);
+                        let oilRigLocation = Map.getPos(oilRig.x, oilRig.y, mapSize, this.rustplus);
                         marker.ch47Type = 'smallOilRig';
 
                         this.rustplus.sendEvent(
                             this.rustplus.notificationSettings.heavyScientistCalled,
-                            `Heavy Scientists got called to the Small Oil Rig at ${oilRigLocation}.`,
-                            this.rustplus.firstPoll,
+                            `Heavy Scientists got called to the Small Oil Rig at ${oilRigLocation.location}.`,
+                            this.rustplus.isFirstPoll,
                             'small_oil_rig_logo.png');
 
                         let crateId = this.getOilRigCrateId(oilRig.x, oilRig.y, mapMarkers);
@@ -508,7 +508,7 @@ class MapMarkers {
                             this.crateSmallOilRigTimers[crateId] = new Timer.timer(
                                 this.notifyCrateSmallOilRigOpen.bind(this),
                                 instance.serverList[this.rustplus.serverId].oilRigLockedCrateUnlockTimeMs,
-                                oilRigLocation,
+                                oilRigLocation.location,
                                 crateId);
                             this.crateSmallOilRigTimers[crateId].start();
                         }
@@ -519,18 +519,18 @@ class MapMarkers {
                 }
             }
 
-            if (!found && !this.rustplus.firstPoll) {
+            if (!found && !this.rustplus.isFirstPoll) {
                 for (let oilRig of largeOilRig) {
                     if (Map.getDistance(marker.x, marker.y, oilRig.x, oilRig.y) <=
                         Constants.OIL_RIG_CHINOOK_47_MAX_SPAWN_DISTANCE) {
                         found = true;
-                        let oilRigLocation = Map.getPos(oilRig.x, oilRig.y, mapSize, true, this.rustplus);
+                        let oilRigLocation = Map.getPos(oilRig.x, oilRig.y, mapSize, this.rustplus);
                         marker.ch47Type = 'largeOilRig';
 
                         this.rustplus.sendEvent(
                             this.rustplus.notificationSettings.heavyScientistCalled,
-                            `Heavy Scientists got called to the Large Oil Rig at ${oilRigLocation}.`,
-                            this.rustplus.firstPoll,
+                            `Heavy Scientists got called to the Large Oil Rig at ${oilRigLocation.location}.`,
+                            this.rustplus.isFirstPoll,
                             'large_oil_rig_logo.png');
 
                         let crateId = this.getOilRigCrateId(oilRig.x, oilRig.y, mapMarkers);
@@ -540,7 +540,7 @@ class MapMarkers {
                             this.crateLargeOilRigTimers[crateId] = new Timer.timer(
                                 this.notifyCrateLargeOilRigOpen.bind(this),
                                 instance.serverList[this.rustplus.serverId].oilRigLockedCrateUnlockTimeMs,
-                                oilRigLocation,
+                                oilRigLocation.location,
                                 crateId);
                             this.crateLargeOilRigTimers[crateId].start();
                         }
@@ -559,12 +559,12 @@ class MapMarkers {
                 if (Map.isOutsideGridSystem(marker.x, marker.y, mapSize, offset)) {
                     this.rustplus.sendEvent(
                         this.rustplus.notificationSettings.chinook47Detected,
-                        `Chinook 47 enters the map from ${pos} to drop off Locked Crate.`);
+                        `Chinook 47 enters the map from ${pos.string} to drop off Locked Crate.`);
                 }
                 else {
                     this.rustplus.sendEvent(
                         this.rustplus.notificationSettings.chinook47Detected,
-                        `Chinook 47 located at ${pos}.`);
+                        `Chinook 47 located at ${pos.string}.`);
                 }
                 marker.ch47Type = 'crate';
             }
@@ -576,7 +576,7 @@ class MapMarkers {
         for (let marker of leftMarkers) {
             if (marker.ch47Type === 'crate') {
                 this.timeSinceCH47WasOut = new Date();
-                this.rustplus.log('EVENT', `Chinook 47 left the map at ${marker.location}.`);
+                this.rustplus.log('EVENT', `Chinook 47 left the map at ${marker.location.string}.`);
             }
 
             this.ch47s = this.ch47s.filter(e => e.id !== marker.id);
@@ -585,7 +585,7 @@ class MapMarkers {
         /* CH47 markers that still remains. */
         for (let marker of remainingMarkers) {
             let mapSize = this.rustplus.info.correctedMapSize;
-            let pos = Map.getPos(marker.x, marker.y, mapSize, true, this.rustplus);
+            let pos = Map.getPos(marker.x, marker.y, mapSize, this.rustplus);
             let ch47 = this.getMarkerByTypeId(this.types.CH47, marker.id);
 
             ch47.x = marker.x;
@@ -602,7 +602,7 @@ class MapMarkers {
         /* CargoShip markers that are new. */
         for (let marker of newMarkers) {
             let mapSize = this.rustplus.info.correctedMapSize;
-            let pos = Map.getPos(marker.x, marker.y, mapSize, true, this.rustplus);
+            let pos = Map.getPos(marker.x, marker.y, mapSize, this.rustplus);
 
             marker.location = pos;
             marker.crates = [];
@@ -615,7 +615,7 @@ class MapMarkers {
             if (Map.isOutsideGridSystem(marker.x, marker.y, mapSize, offset)) {
                 this.rustplus.sendEvent(
                     this.rustplus.notificationSettings.cargoShipDetected,
-                    `Cargo Ship enters the map from ${pos}.`);
+                    `Cargo Ship enters the map from ${pos.string}.`);
 
                 let instance = this.client.readInstanceFile(this.rustplus.guildId);
                 this.cargoShipEgressTimers[marker.id] = new Timer.timer(
@@ -627,7 +627,7 @@ class MapMarkers {
             else {
                 this.rustplus.sendEvent(
                     this.rustplus.notificationSettings.cargoShipDetected,
-                    `Cargo Ship located at ${pos}.`);
+                    `Cargo Ship located at ${pos.string}.`);
             }
 
             this.cargoShips.push(marker);
@@ -644,7 +644,7 @@ class MapMarkers {
 
             this.rustplus.sendEvent(
                 this.rustplus.notificationSettings.cargoShipLeft,
-                `Cargo Ship just left the map at ${marker.location}.`);
+                `Cargo Ship just left the map at ${marker.location.string}.`);
 
             if (this.cargoShipEgressTimers[marker.id]) {
                 this.cargoShipEgressTimers[marker.id].stop();
@@ -659,7 +659,7 @@ class MapMarkers {
         /* CargoShip markers that still remains. */
         for (let marker of remainingMarkers) {
             let mapSize = this.rustplus.info.correctedMapSize;
-            let pos = Map.getPos(marker.x, marker.y, mapSize, true, this.rustplus);
+            let pos = Map.getPos(marker.x, marker.y, mapSize, this.rustplus);
             let cargoShip = this.getMarkerByTypeId(this.types.CargoShip, marker.id);
 
             cargoShip.x = marker.x;
@@ -678,7 +678,7 @@ class MapMarkers {
         /* Crate markers that are new. */
         for (let marker of newMarkers) {
             let mapSize = this.rustplus.info.correctedMapSize;
-            let pos = Map.getPos(marker.x, marker.y, mapSize, true, this.rustplus);
+            let pos = Map.getPos(marker.x, marker.y, mapSize, this.rustplus);
 
             marker.location = pos;
 
@@ -703,8 +703,8 @@ class MapMarkers {
 
                 this.rustplus.sendEvent(
                     this.rustplus.notificationSettings.lockedCrateSpawnCargoShip,
-                    `Locked Crate${crates} just spawned on Cargo Ship at ${pos}.`,
-                    this.rustplus.firstPoll);
+                    `Locked Crate${crates} just spawned on Cargo Ship at ${pos.string}.`,
+                    this.rustplus.isFirstPoll);
             }
             else if (closestMonument.token === 'oil_rig_small' && distance <
                 this.rustplus.map.monumentInfo[closestMonument.token].radius) {
@@ -714,8 +714,8 @@ class MapMarkers {
                     let oilRig = this.rustplus.map.monumentInfo['oil_rig_small'].clean;
                     this.rustplus.sendEvent(
                         this.rustplus.notificationSettings.lockedCrateOilRigRefreshed,
-                        `Locked Crate just got refreshed on Small ${oilRig} at ${pos}.`,
-                        this.rustplus.firstPoll,
+                        `Locked Crate just got refreshed on Small ${oilRig} at ${pos.location}.`,
+                        this.rustplus.isFirstPoll,
                         'locked_crate_small_oil_rig_logo.png');
 
                     for (let crate of this.smallOilRigCratesLeft) {
@@ -737,19 +737,19 @@ class MapMarkers {
                             let oilRig = this.rustplus.map.monumentInfo['oil_rig_small'].clean;
                             this.rustplus.sendEvent(
                                 this.rustplus.notificationSettings.lockedCrateOilRigRefreshed,
-                                `Locked Crate just got refreshed on Small ${oilRig} at ${pos}.`,
-                                this.rustplus.firstPoll,
+                                `Locked Crate just got refreshed on Small ${oilRig} at ${pos.location}.`,
+                                this.rustplus.isFirstPoll,
                                 'locked_crate_small_oil_rig_logo.png');
                             refreshed = true;
                         }
                     }
 
-                    if (!refreshed && !this.rustplus.firstPoll) {
+                    if (!refreshed && !this.rustplus.isFirstPoll) {
                         let oilRig = this.rustplus.map.monumentInfo['oil_rig_small'].clean;
                         this.rustplus.sendEvent(
                             this.rustplus.notificationSettings.lockedCrateRespawnOilRig,
-                            `Locked Crate just respawned on Small ${oilRig} at ${pos}.`,
-                            this.rustplus.firstPoll,
+                            `Locked Crate just respawned on Small ${oilRig} at ${pos.location}.`,
+                            this.rustplus.isFirstPoll,
                             'locked_crate_small_oil_rig_logo.png');
                     }
                 }
@@ -764,8 +764,8 @@ class MapMarkers {
                     let oilRig = this.rustplus.map.monumentInfo['large_oil_rig'].clean;
                     this.rustplus.sendEvent(
                         this.rustplus.notificationSettings.lockedCrateOilRigRefreshed,
-                        `Locked Crate just got refreshed on ${oilRig} at ${pos}.`,
-                        this.rustplus.firstPoll,
+                        `Locked Crate just got refreshed on ${oilRig} at ${pos.location}.`,
+                        this.rustplus.isFirstPoll,
                         'locked_crate_large_oil_rig_logo.png');
 
                     for (let crate of this.largeOilRigCratesLeft) {
@@ -787,19 +787,19 @@ class MapMarkers {
                             let oilRig = this.rustplus.map.monumentInfo['large_oil_rig'].clean;
                             this.rustplus.sendEvent(
                                 this.rustplus.notificationSettings.lockedCrateOilRigRefreshed,
-                                `Locked Crate just got refreshed on ${oilRig} at ${pos}.`,
-                                this.rustplus.firstPoll,
+                                `Locked Crate just got refreshed on ${oilRig} at ${pos.location}.`,
+                                this.rustplus.isFirstPoll,
                                 'locked_crate_large_oil_rig_logo.png');
                             refreshed = true;
                         }
                     }
 
-                    if (!refreshed && !this.rustplus.firstPoll) {
+                    if (!refreshed && !this.rustplus.isFirstPoll) {
                         let oilRig = this.rustplus.map.monumentInfo['large_oil_rig'].clean;
                         this.rustplus.sendEvent(
                             this.rustplus.notificationSettings.lockedCrateRespawnOilRig,
-                            `Locked Crate just respawned on ${oilRig} at ${pos}.`,
-                            this.rustplus.firstPoll,
+                            `Locked Crate just respawned on ${oilRig} at ${pos.location}.`,
+                            this.rustplus.isFirstPoll,
                             'locked_crate_large_oil_rig_logo.png');
                     }
                 }
@@ -809,15 +809,15 @@ class MapMarkers {
             else if (!(closestMonument.token in this.rustplus.map.monumentInfo) ||
                 distance > this.rustplus.map.monumentInfo[closestMonument.token].radius) {
                 if (!Map.isOutsideGridSystem(marker.x, marker.y, mapSize)) {
-                    if (!this.rustplus.firstPoll) {
+                    if (!this.rustplus.isFirstPoll) {
                         this.rustplus.sendEvent(
                             this.rustplus.notificationSettings.lockedCrateDroppedAtMonument,
-                            `Locked Crate just dropped at ${pos}.`);
+                            `Locked Crate just dropped at ${pos.string}.`);
                     }
                     else {
                         this.rustplus.sendEvent(
                             this.rustplus.notificationSettings.lockedCrateDroppedAtMonument,
-                            `Locked Crate located at ${pos}.`);
+                            `Locked Crate located at ${pos.string}.`);
                     }
 
                     marker.crateType = 'grid';
@@ -831,7 +831,7 @@ class MapMarkers {
                 let name = (this.rustplus.map.monumentInfo.hasOwnProperty(closestMonument.token)) ?
                     this.rustplus.map.monumentInfo[closestMonument.token].clean : closestMonument.token;
 
-                if (!this.rustplus.firstPoll) {
+                if (!this.rustplus.isFirstPoll) {
                     this.timeSinceCH47DroppedCrate = new Date();
 
                     this.rustplus.sendEvent(
@@ -877,12 +877,12 @@ class MapMarkers {
                 let crateNumber = marker.crateNumber;
                 this.rustplus.sendEvent(
                     this.rustplus.notificationSettings.lockedCrateLeftCargoShip,
-                    `Locked Crate (${crateNumber}/3) on Cargo Ship at ${marker.location} just got looted.`);
+                    `Locked Crate (${crateNumber}/3) on Cargo Ship at ${marker.location.string} just got looted.`);
             }
             else if (marker.crateType === 'grid') {
                 this.rustplus.sendEvent(
                     this.rustplus.notificationSettings.lockedCrateMonumentLeft,
-                    `Locked Crate at ${marker.location} just got looted or despawned.`);
+                    `Locked Crate at ${marker.location.string} just got looted or despawned.`);
             }
             else if (marker.crateType === 'invalid') {
                 /* Invalid Locked Crate, we don't care */
@@ -896,8 +896,8 @@ class MapMarkers {
                 if (marker.fakeLeft === true) {
                     this.rustplus.sendEvent(
                         this.rustplus.notificationSettings.lockedCrateLootedOilRig,
-                        `Locked Crate at Small Oil Rig at ${marker.location} just got looted.`,
-                        this.rustplus.firstPoll,
+                        `Locked Crate at Small Oil Rig at ${marker.location.location} just got looted.`,
+                        this.rustplus.isFirstPoll,
                         'locked_crate_small_oil_rig_logo.png');
                 }
                 else {
@@ -942,8 +942,8 @@ class MapMarkers {
                 if (marker.fakeLeft === true) {
                     this.rustplus.sendEvent(
                         this.rustplus.notificationSettings.lockedCrateLootedOilRig,
-                        `Locked Crate at Large Oil Rig at ${marker.location} just got looted.`,
-                        this.rustplus.firstPoll,
+                        `Locked Crate at Large Oil Rig at ${marker.location.location} just got looted.`,
+                        this.rustplus.isFirstPoll,
                         'locked_crate_large_oil_rig_logo.png');
                 }
                 else {
@@ -1018,7 +1018,7 @@ class MapMarkers {
         /* Crate markers that still remains. */
         for (let marker of remainingMarkers) {
             let mapSize = this.rustplus.info.correctedMapSize;
-            let pos = Map.getPos(marker.x, marker.y, mapSize, true, this.rustplus);
+            let pos = Map.getPos(marker.x, marker.y, mapSize, this.rustplus);
             let crate = this.getMarkerByTypeId(this.types.Crate, marker.id);
 
             crate.x = marker.x;
@@ -1067,7 +1067,7 @@ class MapMarkers {
         /* PatrolHelicopter markers that are new. */
         for (let marker of newMarkers) {
             let mapSize = this.rustplus.info.correctedMapSize;
-            let pos = Map.getPos(marker.x, marker.y, mapSize, true, this.rustplus);
+            let pos = Map.getPos(marker.x, marker.y, mapSize, this.rustplus);
 
             marker.location = pos;
 
@@ -1078,12 +1078,12 @@ class MapMarkers {
             if (Map.isOutsideGridSystem(marker.x, marker.y, mapSize, offset)) {
                 this.rustplus.sendEvent(
                     this.rustplus.notificationSettings.patrolHelicopterDetected,
-                    `Patrol Helicopter enters the map from ${pos}.`);
+                    `Patrol Helicopter enters the map from ${pos.string}.`);
             }
             else {
                 this.rustplus.sendEvent(
                     this.rustplus.notificationSettings.patrolHelicopterDetected,
-                    `Patrol Helicopter located at ${pos}.`);
+                    `Patrol Helicopter located at ${pos.string}.`);
             }
 
             this.patrolHelicopters.push(marker);
@@ -1102,7 +1102,7 @@ class MapMarkers {
             else if (marker.fakeLeft && marker.stage === 2) {
                 this.rustplus.sendEvent(
                     this.rustplus.notificationSettings.patrolHelicopterLeft,
-                    `Patrol Helicopter just left the map at ${marker.location}.`);
+                    `Patrol Helicopter just left the map at ${marker.location.string}.`);
 
                 this.timeSincePatrolHelicopterWasOnMap = new Date();
             }
@@ -1128,7 +1128,7 @@ class MapMarkers {
         /* PatrolHelicopter markers that still remains. */
         for (let marker of remainingMarkers) {
             let mapSize = this.rustplus.info.correctedMapSize;
-            let pos = Map.getPos(marker.x, marker.y, mapSize, true, this.rustplus);
+            let pos = Map.getPos(marker.x, marker.y, mapSize, this.rustplus);
             let patrolHelicopter = this.getMarkerByTypeId(this.types.PatrolHelicopter, marker.id);
 
             patrolHelicopter.x = marker.x;
@@ -1144,11 +1144,10 @@ class MapMarkers {
     notifyCargoShipEgress(args) {
         let id = args[0];
         let marker = this.getMarkerByTypeId(this.types.CargoShip, id);
-        let pos = marker.location;
 
         this.rustplus.sendEvent(
             this.rustplus.notificationSettings.cargoShipEgress,
-            `Cargo Ship should be in the egress stage at ${pos}.`);
+            `Cargo Ship should be in the egress stage at ${marker.location.string}.`);
 
         if (this.cargoShipEgressTimers[id]) {
             this.cargoShipEgressTimers[id].stop();
@@ -1163,7 +1162,7 @@ class MapMarkers {
         this.rustplus.sendEvent(
             this.rustplus.notificationSettings.lockedCrateOilRigUnlocked,
             `Locked Crate at Small Oil Rig at ${oilRigLocation} has been unlocked.`,
-            this.rustplus.firstPoll,
+            this.rustplus.isFirstPoll,
             'locked_crate_small_oil_rig_logo.png');
 
         if (this.crateSmallOilRigTimers[crateId]) {
@@ -1179,7 +1178,7 @@ class MapMarkers {
         this.rustplus.sendEvent(
             this.rustplus.notificationSettings.lockedCrateOilRigUnlocked,
             `Locked Crate at Large Oil Rig at ${oilRigLocation} has been unlocked.`,
-            this.rustplus.firstPoll,
+            this.rustplus.isFirstPoll,
             'locked_crate_large_oil_rig_logo.png');
 
         if (this.crateLargeOilRigTimers[crateId]) {

@@ -1,7 +1,10 @@
-const Timer = require('../util/timer');
-const { MessageEmbed, MessageAttachment } = require('discord.js');
-const DiscordTools = require('../discordTools/discordTools.js');
+const Discord = require('discord.js');
+const Path = require('path');
+
 const Constants = require('../util/constants.js');
+const DiscordEmbeds = require('../discordTools/discordEmbeds.js');
+const DiscordTools = require('../discordTools/discordTools.js');
+const Timer = require('../util/timer');
 
 module.exports = {
     handler: async function (rustplus, client) {
@@ -60,16 +63,18 @@ module.exports = {
         const mapSeed = `${rustplus.info.seed}`;
         const mapSalt = `${rustplus.info.salt}`;
 
-        let files = [new MessageAttachment('src/resources/images/server_info_logo.png')];
-        let embed = new MessageEmbed()
-            .setTitle('Server Information')
-            .setColor('#ce412b')
-            .setThumbnail('attachment://server_info_logo.png')
-            .setDescription(serverName)
-            .addFields(
+        let files = [new Discord.AttachmentBuilder(
+            Path.join(__dirname, '..', 'resources/images/server_info_logo.png'))];
+        const embed = DiscordEmbeds.getEmbed({
+            title: 'Server Information',
+            color: '#ce412b',
+            thumbnail: 'attachment://server_info_logo.png',
+            description: serverName,
+            fields: [
                 { name: 'Players', value: `\`${pop}\``, inline: true },
                 { name: 'Time', value: `\`${serverTime}\``, inline: true },
-                { name: 'Wipe', value: `\`${wipeDay}\``, inline: true });
+                { name: 'Wipe', value: `\`${wipeDay}\``, inline: true }]
+        });
 
         if (timeLeft !== null) {
             embed.addFields(
@@ -78,7 +83,7 @@ module.exports = {
                 { name: '\u200B', value: '\u200B', inline: true });
         }
         else {
-            embed.addField('\u200B', '\u200B');
+            embed.addFields({ name: '\u200B', value: '\u200B', inline: false });
         }
 
         embed.addFields(
@@ -107,14 +112,14 @@ module.exports = {
         for (const [id, timer] of Object.entries(rustplus.mapMarkers.cargoShipEgressTimers)) {
             let cargoShip = rustplus.mapMarkers.getMarkerByTypeId(rustplus.mapMarkers.types.CargoShip, parseInt(id));
             let time = Timer.getTimeLeftOfTimer(timer, 's');
-            cargoShipMessage = `Egress in ${time} at ${cargoShip.location}.`;
+            cargoShipMessage = `Egress in ${time} at ${cargoShip.location.string}.`;
             cargoShipMessage += `\nCrates: (${cargoShip.crates.length}/3).`;
             break;
         }
 
         if (cargoShipMessage === '') {
             for (let cargoShip of rustplus.mapMarkers.cargoShips) {
-                cargoShipMessage = `At ${cargoShip.location}.`;
+                cargoShipMessage = `At ${cargoShip.location.string}.`;
                 cargoShipMessage += `\nCrates: (${cargoShip.crates.length}/3).`;
                 break;
             }
@@ -134,7 +139,7 @@ module.exports = {
         /* PatrolHelicopter */
         let patrolHelicopterMessage = '';
         for (let patrolHelicopter of rustplus.mapMarkers.patrolHelicopters) {
-            patrolHelicopterMessage = `At ${patrolHelicopter.location}.`
+            patrolHelicopterMessage = `At ${patrolHelicopter.location.string}.`
             break;
         }
 
@@ -187,7 +192,7 @@ module.exports = {
             let time = Timer.getTimeLeftOfTimer(timer, 's');
 
             if (time !== null) {
-                smallOilMessage = `${time} until unlocks at ${crate.location}.`;
+                smallOilMessage = `${time} until unlocks at ${crate.location.location}.`;
                 break;
             }
         }
@@ -211,7 +216,7 @@ module.exports = {
             let time = Timer.getTimeLeftOfTimer(timer, 's');
 
             if (time !== null) {
-                largeOilMessage = `${time} until unlocks at ${crate.location}.`;
+                largeOilMessage = `${time} until unlocks at ${crate.location.location}.`;
                 break;
             }
         }
@@ -230,7 +235,7 @@ module.exports = {
         /* CH47 */
         let ch47Message = '';
         for (let ch47 of rustplus.mapMarkers.ch47s) {
-            ch47Message = `At ${ch47.location}.`
+            ch47Message = `At ${ch47.location.string}.`
             break;
         }
 
@@ -262,7 +267,7 @@ module.exports = {
                 for (let crate of rustplus.mapMarkers.crates) {
                     if (!['cargoShip', 'oil_rig_small', 'large_oil_rig', 'invalid'].includes(crate.crateType)) {
                         if (crate.crateType === 'grid') {
-                            crateMessage = `At ${crate.location}.`;
+                            crateMessage = `At ${crate.location.string}.`;
                         }
                         else {
                             crateMessage = `At ${crate.crateType}.`;
@@ -283,23 +288,23 @@ module.exports = {
         }
 
 
-        let files = [new MessageAttachment('src/resources/images/event_info_logo.png')];
-        let embed = new MessageEmbed()
-            .setTitle('Event Information')
-            .setColor('#ce412b')
-            .setThumbnail('attachment://event_info_logo.png')
-            .setDescription('In-game event information')
-            .addFields(
+        let files = [new Discord.AttachmentBuilder(
+            Path.join(__dirname, '..', 'resources/images/event_info_logo.png'))];
+        const embed = DiscordEmbeds.getEmbed({
+            title: 'Event Information',
+            color: '#ce412b',
+            thumbnail: 'attachment://event_info_logo.png',
+            description: 'In-game event information',
+            footer: { text: instance.serverList[rustplus.serverId].title },
+            fields: [
                 { name: 'Cargoship', value: `\`${cargoShipMessage}\``, inline: true },
                 { name: 'Patrol Helicopter', value: `\`${patrolHelicopterMessage}\``, inline: true },
                 { name: 'Bradley APC', value: `\`${bradleyAPCMessage}\``, inline: true },
                 { name: 'Small Oil Rig', value: `\`${smallOilMessage}\``, inline: true },
                 { name: 'Large Oil Rig', value: `\`${largeOilMessage}\``, inline: true },
                 { name: 'Chinook 47', value: `\`${ch47Message}\``, inline: true },
-                { name: 'Crate', value: `\`${crateMessage}\``, inline: true })
-            .setFooter({
-                text: instance.serverList[rustplus.serverId].title
-            });
+                { name: 'Crate', value: `\`${crateMessage}\``, inline: true }]
+        });
 
         if (rustplus.informationIntervalCounter === 0) {
             await sendInformationEmbed(rustplus, client, instance, embed, files, message, 'event');
@@ -319,7 +324,7 @@ module.exports = {
             }
 
             names += (player.teamLeader) ? `${Constants.LEADER_EMOJI}\n` : '\n';
-            locations += (player.isOnline || player.isAlive) ? `${player.pos}\n` : '-\n';
+            locations += (player.isOnline || player.isAlive) ? `${player.pos.string}\n` : '-\n';
 
             if (player.isOnline) {
                 status += (player.getAfkSeconds() >= Constants.AFK_TIME_SECONDS) ?
@@ -331,18 +336,18 @@ module.exports = {
             }
         }
 
-        let files = [new MessageAttachment('src/resources/images/team_info_logo.png')];
-        let embed = new MessageEmbed()
-            .setTitle('Team Member Information')
-            .setColor('#ce412b')
-            .setThumbnail('attachment://team_info_logo.png')
-            .addFields(
+        let files = [new Discord.AttachmentBuilder(
+            Path.join(__dirname, '..', 'resources/images/team_info_logo.png'))];
+        const embed = DiscordEmbeds.getEmbed({
+            title: 'Team Member Information',
+            color: '#ce412b',
+            thumbnail: 'attachment://team_info_logo.png',
+            footer: { text: instance.serverList[rustplus.serverId].title },
+            fields: [
                 { name: 'Team Member', value: names, inline: true },
                 { name: 'Status', value: status, inline: true },
-                { name: 'Location', value: locations, inline: true })
-            .setFooter({
-                text: instance.serverList[rustplus.serverId].title
-            });
+                { name: 'Location', value: locations, inline: true }]
+        });
 
         if (rustplus.informationIntervalCounter === 0) {
             await sendInformationEmbed(rustplus, client, instance, embed, files, message, 'team');

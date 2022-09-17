@@ -1,9 +1,11 @@
-const { MessageEmbed } = require('discord.js');
+const Discord = require('discord.js');
+
+const DiscordEmbeds = require('../discordTools/discordEmbeds');
 
 module.exports = {
     name: 'interactionCreate',
     async execute(client, interaction) {
-        let instance = client.readInstanceFile(interaction.guildId);
+        const instance = client.readInstanceFile(interaction.guildId);
 
         /* Check so that the interaction comes from valid channels */
         if (!Object.values(instance.channelId).includes(interaction.channelId) && !interaction.isCommand) {
@@ -24,31 +26,29 @@ module.exports = {
         else if (interaction.isSelectMenu()) {
             require('../handlers/selectMenuHandler')(client, interaction);
         }
-        else if (interaction.isCommand) {
+        else if (interaction.type === Discord.InteractionType.ApplicationCommand) {
             const command = interaction.client.commands.get(interaction.commandName);
 
             /* If the command doesn't exist, return */
-            if (!command) {
-                return;
-            }
+            if (!command) return;
 
             try {
                 await command.execute(client, interaction);
-            } catch (error) {
-                client.log('ERROR', error, 'error');
+            }
+            catch (e) {
+                client.log('ERROR', e, 'error');
 
-                let str = 'There was an error while executing this command!';
-                await client.interactionEditReply(interaction, {
-                    embeds: [new MessageEmbed()
-                        .setColor('#ff0040')
-                        .setDescription(`\`\`\`diff\n- ${str}\n\`\`\``)],
-                    ephemeral: true
-                });
+                const str = 'There was an error while executing this command!';
+                await client.interactionEditReply(interaction, DiscordEmbeds.getActionInfoEmbed(1, str));
                 client.log('ERROR', str, 'error');
             }
         }
+        else if (interaction.type === Discord.InteractionType.ModalSubmit) {
+            require('../handlers/modalHandler')(client, interaction);
+        }
         else {
             client.log('ERROR', 'Unknown Interaction...', 'error')
+
             if (interaction.isButton()) {
                 try {
                     interaction.deferUpdate();

@@ -1,23 +1,22 @@
-const DiscordTools = require('../discordTools/discordTools.js');
+const DiscordMessages = require('../discordTools/discordMessages.js');
+const DiscordSelectMenus = require('../discordTools/discordSelectMenus.js');
 
 module.exports = async (client, interaction) => {
-    let guildId = interaction.guildId;
-    let instance = client.readInstanceFile(guildId);
-    let rustplus = client.rustplusInstances[guildId];
+    const instance = client.readInstanceFile(interaction.guildId);
+    const guildId = interaction.guildId;
+    const rustplus = client.rustplusInstances[guildId];
 
-    if (interaction.customId === 'prefix') {
+    if (interaction.customId === 'Prefix') {
         instance.generalSettings.prefix = interaction.values[0];
         client.writeInstanceFile(guildId, instance);
 
-        if (rustplus) {
-            rustplus.generalSettings.prefix = interaction.values[0];
-        }
+        if (rustplus) rustplus.generalSettings.prefix = interaction.values[0];
 
-        let row = DiscordTools.getPrefixSelectMenu(interaction.values[0]);
-
-        await client.interactionUpdate(interaction, { components: [row] });
+        await client.interactionUpdate(interaction, {
+            components: [DiscordSelectMenus.getPrefixSelectMenu(interaction.values[0])]
+        });
     }
-    else if (interaction.customId === 'trademark') {
+    else if (interaction.customId === 'Trademark') {
         instance.generalSettings.trademark = interaction.values[0];
         client.writeInstanceFile(guildId, instance);
 
@@ -27,27 +26,32 @@ module.exports = async (client, interaction) => {
                 '' : `${instance.generalSettings.trademark} | `;
         }
 
-        let row = DiscordTools.getTrademarkSelectMenu(interaction.values[0]);
-
-        await client.interactionUpdate(interaction, { components: [row] });
+        await client.interactionUpdate(interaction, {
+            components: [DiscordSelectMenus.getTrademarkSelectMenu(interaction.values[0])]
+        });
     }
-    else if (interaction.customId.endsWith('AutoDayNight')) {
-        let id = interaction.customId.replace('AutoDayNight', '');
+    else if (interaction.customId === 'CommandDelay') {
+        instance.generalSettings.commandDelay = interaction.values[0];
+        client.writeInstanceFile(guildId, instance);
 
-        if (!instance.switches.hasOwnProperty(id)) {
-            try {
-                await client.switchesMessages[guildId][id].delete();
-            }
-            catch (e) {
-                client.log('ERROR', `Could not delete switch message for entityId: ${id}.`, 'error');
-            }
-            delete client.switchesMessages[guildId][id];
+        if (rustplus) rustplus.generalSettings.commandDelay = interaction.values[0];
+
+        await client.interactionUpdate(interaction, {
+            components: [DiscordSelectMenus.getCommandDelaySelectMenu(interaction.values[0])]
+        });
+    }
+    else if (interaction.customId.startsWith('AutoDayNight')) {
+        const ids = JSON.parse(interaction.customId.replace('AutoDayNight', ''));
+        const server = instance.serverList[ids.serverId];
+
+        if (!server || (server && !server.switches.hasOwnProperty(ids.entityId))) {
+            await interaction.message.delete();
             return;
         }
 
-        instance.switches[id].autoDayNight = parseInt(interaction.values[0]);
+        server.switches[ids.entityId].autoDayNight = parseInt(interaction.values[0]);
         client.writeInstanceFile(guildId, instance);
 
-        DiscordTools.sendSmartSwitchMessage(guildId, id, false, true, false, interaction);
+        DiscordMessages.sendSmartSwitchMessage(guildId, ids.serverId, ids.entityId, interaction);
     }
 }

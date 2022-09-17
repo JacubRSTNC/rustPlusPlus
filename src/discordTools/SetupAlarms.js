@@ -1,31 +1,30 @@
-const DiscordTools = require('./discordTools.js');
+const DiscordMessages = require('./discordMessages.js');
 
 module.exports = async (client, rustplus) => {
     let instance = client.readInstanceFile(rustplus.guildId);
+    const guildId = rustplus.guildId;
+    const serverId = rustplus.serverId;
 
-    for (const [key, value] of Object.entries(instance.alarms)) {
-        if (rustplus.serverId !== `${value.serverId}`) continue;
-
-        let info = await rustplus.getEntityInfoAsync(key);
-
-        instance = client.readInstanceFile(rustplus.guildId);
+    for (const entityId in instance.serverList[serverId].alarms) {
+        instance = client.readInstanceFile(guildId);
+        const entity = instance.serverList[serverId].alarms[entityId];
+        const info = await rustplus.getEntityInfoAsync(entityId);
 
         if (!(await rustplus.isResponseValid(info))) {
-            await DiscordTools.sendSmartAlarmNotFound(rustplus.guildId, key);
-            instance.alarms[key].reachable = false;
+            await DiscordMessages.sendSmartAlarmNotFoundMessage(guildId, serverId, entityId);
+            entity.reachable = false;
         }
         else {
-            instance.alarms[key].reachable = true;
+            entity.reachable = true;
         }
-        client.writeInstanceFile(rustplus.guildId, instance);
 
-        if (instance.alarms[key].reachable) {
-            if (instance.alarms[key].active !== info.entityInfo.payload.value) {
-                instance.alarms[key].active = info.entityInfo.payload.value;
-                client.writeInstanceFile(rustplus.guildId, instance);
+        if (entity.reachable) {
+            if (entity.active !== info.entityInfo.payload.value) {
+                entity.active = info.entityInfo.payload.value;
             }
         }
+        client.writeInstanceFile(guildId, instance);
 
-        await DiscordTools.sendSmartAlarmMessage(rustplus.guildId, key);
+        await DiscordMessages.sendSmartAlarmMessage(guildId, serverId, entityId);
     }
 };

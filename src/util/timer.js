@@ -1,6 +1,6 @@
 module.exports = {
     timer: function (callback, delay, ...args) {
-        var id, started, remaining = delay, running = false;
+        let id, started, remaining = delay, running = false;
 
         this.start = function () {
             started = new Date();
@@ -39,12 +39,8 @@ module.exports = {
                 this.start();
             }
 
-            if (remaining <= 0) {
-                return 0;
-            }
-            else {
-                return remaining;
-            }
+            if (remaining <= 0) return 0;
+            return remaining;
         }
 
         this.isFinished = function () {
@@ -64,9 +60,7 @@ module.exports = {
 
     getTimeLeftOfTimer: function (timer, ignore = '') {
         /* Returns the time left of a timer. If timer is not running, null will be returned. */
-        if (timer.getStateRunning()) {
-            return this.secondsToFullScale(timer.getTimeLeft() / 1000, ignore);
-        }
+        if (timer.getStateRunning()) return this.secondsToFullScale(timer.getTimeLeft() / 1000, ignore);
         return null;
     },
 
@@ -88,7 +82,7 @@ module.exports = {
         let minutes = 0;
         let seconds = 0;
 
-        time = '';
+        let time = '';
 
         days += originalDays;
         if (days > 0 && !ignore.includes('d')) {
@@ -152,14 +146,14 @@ module.exports = {
     },
 
     getSecondsFromStringTime: function (str) {
-        let matches = str.match(/\d+[dhms]/g);
+        const matches = str.match(/\d+[dhms]/g);
         let totSeconds = 0;
 
         if (matches === null) {
             return null;
         }
 
-        for (let match of matches) {
+        for (const match of matches) {
             let value = parseInt(match.slice(0, -1));
             switch (match[match.length - 1]) {
                 case 'd': { /* Days */
