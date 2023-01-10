@@ -53,6 +53,10 @@ module.exports = {
 
             rustplus.disconnect();
             delete client.rustplusInstances[guildId]; // TODO: move to disconnected.js?
+            setTimeout(() => {
+                rustplus.isReconnecting = true;
+                rustplus.connect();
+            }, 5000)
             return;
         }
         rustplus.log(client.intlGet(null, 'connectedCap'), client.intlGet(null, 'rustplusOperational'));
