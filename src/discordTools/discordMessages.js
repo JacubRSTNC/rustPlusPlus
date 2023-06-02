@@ -14,13 +14,14 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-    https://github.com/alexemanuelol/rustPlusPlus
+    https://github.com/alexemanuelol/rustplusplus
 
 */
 
 const Discord = require('discord.js');
 const Path = require('path');
 
+const Constants = require('../util/constants.js');
 const Client = require('../../index.ts');
 const DiscordButtons = require('./discordButtons.js');
 const DiscordEmbeds = require('./discordEmbeds.js');
@@ -173,7 +174,7 @@ module.exports = {
             embeds: [DiscordEmbeds.getSmartSwitchGroupEmbed(guildId, serverId, groupId)],
             components: DiscordButtons.getSmartSwitchGroupButtons(guildId, serverId, groupId),
             files: [new Discord.AttachmentBuilder(
-                Path.join(__dirname, '..', 'resources/images/electrics/smart_switch.png'))]
+                Path.join(__dirname, '..', `resources/images/electrics/${group.image}`))]
         }
 
         const message = await module.exports.sendMessage(guildId, content, group.messageId,
@@ -355,11 +356,11 @@ module.exports = {
         }
     },
 
-    sendDiscordEventMessage: async function (guildId, serverId, text, image) {
+    sendDiscordEventMessage: async function (guildId, serverId, text, image, color) {
         const instance = Client.client.getInstance(guildId);
 
         const content = {
-            embeds: [DiscordEmbeds.getEventEmbed(guildId, serverId, text, image)],
+            embeds: [DiscordEmbeds.getEventEmbed(guildId, serverId, text, image, color)],
             files: [new Discord.AttachmentBuilder(
                 Path.join(__dirname, '..', `resources/images/events/${image}`))]
         }
@@ -370,7 +371,10 @@ module.exports = {
     sendActivityNotificationMessage: async function (guildId, serverId, color, text, steamId) {
         const instance = Client.client.getInstance(guildId);
 
-        const png = await Scrape.scrapeSteamProfilePicture(Client.client, steamId);
+        let png = null;
+        if (steamId !== null) {
+            png = await Scrape.scrapeSteamProfilePicture(Client.client, steamId);
+        }
         const content = {
             embeds: [DiscordEmbeds.getActivityNotificationEmbed(guildId, serverId, color, text, steamId, png)]
         }
@@ -381,11 +385,28 @@ module.exports = {
     sendTeamChatMessage: async function (guildId, message) {
         const instance = Client.client.getInstance(guildId);
 
+        let color = null;
+        /** Check if COLOR_TEAMCHAT is not null and 7 digits long, what represent a Hex Color Code. e.g. #ffffff */
+        if (Constants.COLOR_TEAMCHAT != null && Constants.COLOR_TEAMCHAT.length === 7) {
+            color = Constants.COLOR_TEAMCHAT;
+        }
+        else if (message.color.length === 4) {
+            color = message.color.replace('#', '');
+            color = `#${color.split('').map(function (hex) { return hex + hex; }).join('')}`;
+        }
+        else {
+            color = message.color;
+        }
+
         const content = {
             embeds: [DiscordEmbeds.getEmbed({
-                color: message.color,
+                color: color,
                 description: `**${message.name}**: ${message.message}`
             })]
+        }
+
+        if (message.message.includes('@everyone')) {
+            content.content = '@everyone';
         }
 
         await module.exports.sendMessage(guildId, content, null, instance.channelId.teamchat);
@@ -510,6 +531,14 @@ module.exports = {
             embeds: [DiscordEmbeds.getHelpEmbed(interaction.guildId)],
             components: DiscordButtons.getHelpButtons(),
             ephemeral: true
+        }
+
+        await Client.client.interactionReply(interaction, content);
+    },
+
+    sendCctvMessage: async function (interaction, monument, cctvCodes, dynamic) {
+        const content = {
+            embeds: [DiscordEmbeds.getCctvEmbed(interaction.guildId, monument, cctvCodes, dynamic)],
         }
 
         await Client.client.interactionReply(interaction, content);

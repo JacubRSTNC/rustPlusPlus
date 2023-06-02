@@ -14,7 +14,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-    https://github.com/alexemanuelol/rustPlusPlus
+    https://github.com/alexemanuelol/rustplusplus
 
 */
 
@@ -228,14 +228,8 @@ async function pairingServer(client, guild, full, data, body) {
         switchGroups: server ? server.switchGroups : {},
         messageId: (message !== undefined) ? message.id : null,
         battlemetricsId: battlemetricsId,
-        connect: (info === null) ? 'Unavailable' : `${client.intlGet(guild.id, 'connect')} ${info.ip}:${info.port}`,
+        connect: (info === null) ? null : `connect ${info.ip}:${info.port}`,
         cargoShipEgressTimeMs: server ? server.cargoShipEgressTimeMs : Constants.DEFAULT_CARGO_SHIP_EGRESS_TIME_MS,
-        bradleyApcRespawnTimeMs: server ? server.bradleyApcRespawnTimeMs :
-            Constants.DEFAULT_BRADLEY_APC_RESPAWN_TIME_MS,
-        lockedCrateDespawnTimeMs: server ? server.lockedCrateDespawnTimeMs :
-            Constants.DEFAULT_LOCKED_CRATE_DESPAWN_TIME_MS,
-        lockedCrateDespawnWarningTimeMs: server ? server.lockedCrateDespawnWarningTimeMs :
-            Constants.DEFAULT_LOCKED_CRATE_DESPAWN_WARNING_TIME_MS,
         oilRigLockedCrateUnlockTimeMs: server ? server.oilRigLockedCrateUnlockTimeMs :
             Constants.DEFAULT_OIL_RIG_LOCKED_CRATE_UNLOCK_TIME_MS,
         timeTillDay: server ? server.timeTillDay : null,
@@ -268,7 +262,7 @@ async function pairingEntitySwitch(client, guild, full, data, body) {
         name: entityExist ? switches[body.entityId].name : client.intlGet(guild.id, 'smartSwitch'),
         command: entityExist ? switches[body.entityId].command : body.entityId,
         image: entityExist ? switches[body.entityId].image : 'smart_switch.png',
-        autoDayNight: entityExist ? switches[body.entityId].autoDayNight : 0,
+        autoDayNightOnOff: entityExist ? switches[body.entityId].autoDayNightOnOff : 0,
         location: entityExist ? switches[body.entityId].location : null,
         server: entityExist ? switches[body.entityId].server : body.name,
         messageId: entityExist ? switches[body.entityId].messageId : null

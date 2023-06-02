@@ -14,7 +14,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-    https://github.com/alexemanuelol/rustPlusPlus
+    https://github.com/alexemanuelol/rustplusplus
 
 */
 
@@ -282,7 +282,8 @@ module.exports = {
         return module.exports.getEmbed({
             title: group.name,
             color: Constants.COLOR_DEFAULT,
-            thumbnail: 'attachment://smart_switch.png',
+            description: `**ID**: \`${groupId}\``,
+            thumbnail: `attachment://${group.image}`,
             footer: { text: `${instance.serverList[serverId].title}` },
             fields: [
                 {
@@ -535,14 +536,14 @@ module.exports = {
 
     },
 
-    getEventEmbed: function (guildId, serverId, text, image) {
+    getEventEmbed: function (guildId, serverId, text, image, color = Constants.COLOR_DEFAULT) {
         const instance = Client.client.getInstance(guildId);
         const server = instance.serverList[serverId];
         return module.exports.getEmbed({
-            color: Constants.COLOR_DEFAULT,
+            color: color,
             thumbnail: `attachment://${image}`,
             title: text,
-            footer: { text: server.title },
+            footer: { text: server.title, iconURL: server.img },
             timestamp: true
         });
     },
@@ -672,19 +673,15 @@ module.exports = {
 
         const cargoshipFieldName = Client.client.intlGet(guildId, 'cargoship');
         const patrolHelicopterFieldName = Client.client.intlGet(guildId, 'patrolHelicopter');
-        const bradleyAPCFieldName = Client.client.intlGet(guildId, 'bradleyApc');
         const smallOilRigFieldName = Client.client.intlGet(guildId, 'smallOilRig');
         const largeOilRigFieldName = Client.client.intlGet(guildId, 'largeOilRig');
         const chinook47FieldName = Client.client.intlGet(guildId, 'chinook47');
-        const crateFieldName = Client.client.intlGet(guildId, 'crate');
 
         const cargoShipMessage = rustplus.getCommandCargo(true);
         const patrolHelicopterMessage = rustplus.getCommandHeli(true);
-        const bradleyAPCMessage = rustplus.getCommandBradley(true);
         const smallOilMessage = rustplus.getCommandSmall(true);
         const largeOilMessage = rustplus.getCommandLarge(true);
         const ch47Message = rustplus.getCommandChinook(true);
-        const crateMessage = rustplus.getCommandCrate(true);
 
         return module.exports.getEmbed({
             title: Client.client.intlGet(guildId, 'eventInfo'),
@@ -695,11 +692,9 @@ module.exports = {
             fields: [
                 { name: cargoshipFieldName, value: `\`${cargoShipMessage}\``, inline: true },
                 { name: patrolHelicopterFieldName, value: `\`${patrolHelicopterMessage}\``, inline: true },
-                { name: bradleyAPCFieldName, value: `\`${bradleyAPCMessage}\``, inline: true },
                 { name: smallOilRigFieldName, value: `\`${smallOilMessage}\``, inline: true },
                 { name: largeOilRigFieldName, value: `\`${largeOilMessage}\``, inline: true },
-                { name: chinook47FieldName, value: `\`${ch47Message}\``, inline: true },
-                { name: crateFieldName, value: `\`${crateMessage}\``, inline: true }],
+                { name: chinook47FieldName, value: `\`${ch47Message}\``, inline: true }],
             timestamp: true
         });
     },
@@ -829,7 +824,7 @@ module.exports = {
     },
 
     getHelpEmbed: function (guildId) {
-        const repository = 'https://github.com/alexemanuelol/rustPlusPlus';
+        const repository = 'https://github.com/alexemanuelol/rustplusplus';
         const credentials = `${repository}/blob/master/docs/credentials.md`;
         const pairServer = `${repository}/blob/master/docs/pair_and_connect_to_server.md`;
         const commands = `${repository}/blob/master/docs/commands.md`;
@@ -842,8 +837,24 @@ module.exports = {
         return module.exports.getEmbed({
             color: Constants.COLOR_DEFAULT,
             timestamp: true,
-            title: `rustPlusPlus Help`,
+            title: `rustplusplus Help`,
             description: description
+        });
+    },
+
+    getCctvEmbed: function (guildId, monument, cctvCodes, dynamic) {
+        let code = '';
+        for (const cctvCode of cctvCodes) {
+            code += `${cctvCode} \n`;
+        }
+        if (dynamic) {
+            code += Client.client.intlGet(guildId, 'asteriskCctvDesc');
+        }
+        return module.exports.getEmbed({
+            color: Constants.COLOR_DEFAULT,
+            timestamp: true,
+            title: `${monument} CCTV ${Client.client.intlGet(guildId, 'codes')}`,
+            description: code
         });
     },
 }

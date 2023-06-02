@@ -14,7 +14,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-    https://github.com/alexemanuelol/rustPlusPlus
+    https://github.com/alexemanuelol/rustplusplus
 
 */
 
@@ -411,7 +411,7 @@ module.exports = {
         ];
     },
 
-    getTrackerNotifyButtons: function (guildId, allOffline, anyOnline) {
+    getTrackerNotifyButtons: function (guildId, allOffline, anyOnline, inGameConnections) {
         return new Discord.ActionRowBuilder().addComponents(
             module.exports.getButton({
                 customId: 'TrackerNotifyAllOffline',
@@ -422,6 +422,12 @@ module.exports = {
                 customId: 'TrackerNotifyAnyOnline',
                 label: Client.client.intlGet(guildId, 'anyOnlineCap'),
                 style: anyOnline ? SUCCESS : DANGER
+            }),
+            module.exports.getButton({
+                customId: 'TrackerNotifyInGameConnections',
+                label: `${Client.client.intlGet(guildId, 'inGameCap')} ` +
+                    `${Client.client.intlGet(guildId, 'connectionsCap')}`,
+                style: inGameConnections ? SUCCESS : DANGER
             }));
     },
 
@@ -476,19 +482,19 @@ module.exports = {
                 module.exports.getButton({
                     style: Discord.ButtonStyle.Link,
                     label: 'REPOSITORY',
-                    url: 'https://github.com/alexemanuelol/rustPlusPlus'
+                    url: 'https://github.com/alexemanuelol/rustplusplus'
                 })
             ),
             new Discord.ActionRowBuilder().addComponents(
                 module.exports.getButton({
                     style: Discord.ButtonStyle.Link,
                     label: 'DOCUMENTATION',
-                    url: 'https://github.com/alexemanuelol/rustPlusPlus/blob/master/docs/documentation.md'
+                    url: 'https://github.com/alexemanuelol/rustplusplus/blob/master/docs/documentation.md'
                 }),
                 module.exports.getButton({
                     style: Discord.ButtonStyle.Link,
                     label: 'CREDENTIALS',
-                    url: 'https://github.com/alexemanuelol/rustPlusPlus-Credential-Application/releases/v1.1.0'
+                    url: 'https://github.com/alexemanuelol/rustplusplus-Credential-Application/releases/v1.1.0'
                 })
             )];
     },

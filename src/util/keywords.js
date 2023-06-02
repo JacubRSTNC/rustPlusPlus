@@ -14,7 +14,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-    https://github.com/alexemanuelol/rustPlusPlus
+    https://github.com/alexemanuelol/rustplusplus
 
 */
 
@@ -23,12 +23,10 @@ module.exports = {
         return [
             client.intlGet(guildId, 'commandSyntaxAfk'),
             client.intlGet(guildId, 'commandSyntaxAlive'),
-            client.intlGet(guildId, 'commandSyntaxBradley'),
             client.intlGet(guildId, 'commandSyntaxCargo'),
             client.intlGet(guildId, 'commandSyntaxChinook'),
             client.intlGet(guildId, 'commandSyntaxConnection'),
             client.intlGet(guildId, 'commandSyntaxConnections'),
-            client.intlGet(guildId, 'commandSyntaxCrate'),
             client.intlGet(guildId, 'commandSyntaxDeath'),
             client.intlGet(guildId, 'commandSyntaxDeaths'),
             client.intlGet(guildId, 'commandSyntaxHeli'),
@@ -56,7 +54,41 @@ module.exports = {
             client.intlGet(guildId, 'commandSyntaxTTS'),
             client.intlGet(guildId, 'commandSyntaxUnmute'),
             client.intlGet(guildId, 'commandSyntaxUpkeep'),
-            client.intlGet(guildId, 'commandSyntaxWipe')
+            client.intlGet(guildId, 'commandSyntaxWipe'),
+            client.intlGet('en', 'commandSyntaxAfk'),
+            client.intlGet('en', 'commandSyntaxAlive'),
+            client.intlGet('en', 'commandSyntaxCargo'),
+            client.intlGet('en', 'commandSyntaxChinook'),
+            client.intlGet('en', 'commandSyntaxConnection'),
+            client.intlGet('en', 'commandSyntaxConnections'),
+            client.intlGet('en', 'commandSyntaxDeath'),
+            client.intlGet('en', 'commandSyntaxDeaths'),
+            client.intlGet('en', 'commandSyntaxHeli'),
+            client.intlGet('en', 'commandSyntaxLarge'),
+            client.intlGet('en', 'commandSyntaxLeader'),
+            client.intlGet('en', 'commandSyntaxMarker'),
+            client.intlGet('en', 'commandSyntaxMarkers'),
+            client.intlGet('en', 'commandSyntaxMarket'),
+            client.intlGet('en', 'commandSyntaxMute'),
+            client.intlGet('en', 'commandSyntaxNote'),
+            client.intlGet('en', 'commandSyntaxNotes'),
+            client.intlGet('en', 'commandSyntaxOffline'),
+            client.intlGet('en', 'commandSyntaxOnline'),
+            client.intlGet('en', 'commandSyntaxPlayer'),
+            client.intlGet('en', 'commandSyntaxPlayers'),
+            client.intlGet('en', 'commandSyntaxPop'),
+            client.intlGet('en', 'commandSyntaxProx'),
+            client.intlGet('en', 'commandSyntaxSend'),
+            client.intlGet('en', 'commandSyntaxSmall'),
+            client.intlGet('en', 'commandSyntaxTime'),
+            client.intlGet('en', 'commandSyntaxTimer'),
+            client.intlGet('en', 'commandSyntaxTimers'),
+            client.intlGet('en', 'commandSyntaxTranslateTo'),
+            client.intlGet('en', 'commandSyntaxTranslateFromTo'),
+            client.intlGet('en', 'commandSyntaxTTS'),
+            client.intlGet('en', 'commandSyntaxUnmute'),
+            client.intlGet('en', 'commandSyntaxUpkeep'),
+            client.intlGet('en', 'commandSyntaxWipe')
         ];
     },
 

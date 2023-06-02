@@ -14,7 +14,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-    https://github.com/alexemanuelol/rustPlusPlus
+    https://github.com/alexemanuelol/rustplusplus
 
 */
 
@@ -160,6 +160,11 @@ module.exports = (client, guild) => {
                 playerToken: instance.serverList[serverId].playerToken
             };
         }
+    }
+
+    /* Check every serverList for missing keys */
+    for (const [serverId, content] of Object.entries(instance.serverList)) {
+        if (!content.hasOwnProperty('customCameraGroups')) content.customCameraGroups = {};
     }
 
     client.setInstance(guild.id, instance);

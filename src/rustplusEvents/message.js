@@ -14,7 +14,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-    https://github.com/alexemanuelol/rustPlusPlus
+    https://github.com/alexemanuelol/rustplusplus
 
 */
 
@@ -54,6 +54,9 @@ async function messageBroadcast(rustplus, client, message) {
     else if (message.broadcast.hasOwnProperty('entityChanged')) {
         messageBroadcastEntityChanged(rustplus, client, message);
     }
+    else if (message.broadcast.hasOwnProperty('cameraRays')) {
+        messageBroadcastCameraRays(rustplus, client, message);
+    }
 }
 
 async function messageBroadcastTeamChanged(rustplus, client, message) {
@@ -92,6 +95,10 @@ async function messageBroadcastEntityChanged(rustplus, client, message) {
     else if (instance.serverList[rustplus.serverId].storageMonitors.hasOwnProperty(entityId)) {
         messageBroadcastEntityChangedStorageMonitor(rustplus, client, message);
     }
+}
+
+async function messageBroadcastCameraRays(rustplus, client, message) {
+    /* Not implemented */
 }
 
 async function messageBroadcastEntityChangedSmartSwitch(rustplus, client, message) {

@@ -14,10 +14,11 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-    https://github.com/alexemanuelol/rustPlusPlus
+    https://github.com/alexemanuelol/rustplusplus
 
 */
 
+const Config = require('../../config');
 const DiscordMessages = require('../discordTools/discordMessages.js');
 const DiscordTools = require('../discordTools/discordTools.js');
 const SmartSwitchGroupHandler = require('./smartSwitchGroupHandler.js');
@@ -202,6 +203,22 @@ module.exports = async (client, interaction) => {
                 instance.generalSettings.trackerNotifyAnyOnline)]
         });
     }
+    else if (interaction.customId === 'TrackerNotifyInGameConnections') {
+        instance.generalSettings.trackerNotifyInGameConnections =
+            !instance.generalSettings.trackerNotifyInGameConnections;
+        client.setInstance(guildId, instance);
+
+        if (rustplus) rustplus.generalSettings.trackerNotifyInGameConnections =
+            instance.generalSettings.trackerNotifyInGameConnections;
+
+        await client.interactionUpdate(interaction, {
+            components: [DiscordButtons.getTrackerNotifyButtons(
+                guildId,
+                instance.generalSettings.trackerNotifyAllOffline,
+                instance.generalSettings.trackerNotifyAnyOnline,
+                instance.generalSettings.trackerNotifyInGameConnections)]
+        });
+    }
     else if (interaction.customId === 'MapWipeNotifyEveryone') {
         instance.generalSettings.mapWipeNotifyEveryone = !instance.generalSettings.mapWipeNotifyEveryone;
         client.setInstance(guildId, instance);
@@ -319,6 +336,7 @@ module.exports = async (client, interaction) => {
             name: 'Group',
             command: `${groupId}`,
             switches: [],
+            image: 'smart_switch.png',
             messageId: null
         }
         client.setInstance(guildId, instance);
@@ -350,7 +368,7 @@ module.exports = async (client, interaction) => {
         const ids = JSON.parse(interaction.customId.replace('ServerDelete', ''));
         const server = instance.serverList[ids.serverId];
 
-        if (!client.isAdministrator(interaction)) {
+        if (Config.discord.needAdminPrivileges && !client.isAdministrator(interaction)) {
             interaction.deferUpdate();
             return;
         }
@@ -439,7 +457,7 @@ module.exports = async (client, interaction) => {
         const ids = JSON.parse(interaction.customId.replace('SmartSwitchDelete', ''));
         const server = instance.serverList[ids.serverId];
 
-        if (!client.isAdministrator(interaction)) {
+        if (Config.discord.needAdminPrivileges && !client.isAdministrator(interaction)) {
             interaction.deferUpdate();
             return;
         }
@@ -487,7 +505,7 @@ module.exports = async (client, interaction) => {
         const ids = JSON.parse(interaction.customId.replace('SmartAlarmDelete', ''));
         const server = instance.serverList[ids.serverId];
 
-        if (!client.isAdministrator(interaction)) {
+        if (Config.discord.needAdminPrivileges && !client.isAdministrator(interaction)) {
             interaction.deferUpdate();
             return;
         }
@@ -559,7 +577,7 @@ module.exports = async (client, interaction) => {
         const ids = JSON.parse(interaction.customId.replace('StorageMonitorToolCupboardDelete', ''));
         const server = instance.serverList[ids.serverId];
 
-        if (!client.isAdministrator(interaction)) {
+        if (Config.discord.needAdminPrivileges && !client.isAdministrator(interaction)) {
             interaction.deferUpdate();
             return;
         }
@@ -607,7 +625,7 @@ module.exports = async (client, interaction) => {
         const ids = JSON.parse(interaction.customId.replace('StorageMonitorContainerDelete', ''));
         const server = instance.serverList[ids.serverId];
 
-        if (!client.isAdministrator(interaction)) {
+        if (Config.discord.needAdminPrivileges && !client.isAdministrator(interaction)) {
             interaction.deferUpdate();
             return;
         }
@@ -624,7 +642,7 @@ module.exports = async (client, interaction) => {
         client.setInstance(guildId, instance);
     }
     else if (interaction.customId === 'RecycleDelete') {
-        if (!client.isAdministrator(interaction)) {
+        if (Config.discord.needAdminPrivileges && !client.isAdministrator(interaction)) {
             interaction.deferUpdate();
             return;
         }
@@ -671,7 +689,7 @@ module.exports = async (client, interaction) => {
         const ids = JSON.parse(interaction.customId.replace('GroupDelete', ''));
         const server = instance.serverList[ids.serverId];
 
-        if (!client.isAdministrator(interaction)) {
+        if (Config.discord.needAdminPrivileges && !client.isAdministrator(interaction)) {
             interaction.deferUpdate();
             return;
         }
@@ -762,7 +780,7 @@ module.exports = async (client, interaction) => {
         const ids = JSON.parse(interaction.customId.replace('TrackerDelete', ''));
         const tracker = instance.trackers[ids.trackerId];
 
-        if (!client.isAdministrator(interaction)) {
+        if (Config.discord.needAdminPrivileges && !client.isAdministrator(interaction)) {
             interaction.deferUpdate();
             return;
         }

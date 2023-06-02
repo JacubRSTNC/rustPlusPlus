@@ -14,12 +14,13 @@
 	You should have received a copy of the GNU General Public License
 	along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-	https://github.com/alexemanuelol/rustPlusPlus
+	https://github.com/alexemanuelol/rustplusplus
 
 */
 
 const Builder = require('@discordjs/builders');
 
+const Config = require('../../config');
 const DiscordEmbeds = require('../discordTools/discordEmbeds.js');
 const DiscordMessages = require('../discordTools/discordMessages.js');
 const DiscordTools = require('../discordTools/discordTools.js');
@@ -63,13 +64,12 @@ module.exports = {
 
 		if (!await client.validatePermissions(interaction)) return;
 
-		if (!client.isAdministrator(interaction)) {
+		if (Config.discord.needAdminPrivileges && !client.isAdministrator(interaction)) {
 			const str = client.intlGet(interaction.guildId, 'missingPermission');
 			client.interactionReply(interaction, DiscordEmbeds.getActionInfoEmbed(1, str));
 			client.log(client.intlGet(null, 'warningCap'), str);
 			return;
 		}
-
 		await interaction.deferReply({ ephemeral: true });
 
 		const guild = DiscordTools.getGuild(interaction.guildId);
